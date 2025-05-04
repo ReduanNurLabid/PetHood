@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "275767121515",
+    "project_id": "pethood-3cfac",
+    "storage_bucket": "pethood-3cfac.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:275767121515:android:ff7f39eeb489c52d80432e",
+        "android_client_info": {
+          "package_name": "com.example.pethood"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCY02RZjxRrZeyQrJyvUS9czbbtycjee0c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

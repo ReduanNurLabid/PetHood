@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#EEEEEE"
+        android:pathData="M0,0h200v200h-200z" />
+
+    <!-- Cage bars -->
+    <path
+        android:strokeColor="#666666"
+        android:strokeWidth="4"
+        android:pathData="M20,0v200M40,0v200M60,0v200M80,0v200M100,0v200M120,0v200M140,0v200M160,0v200M180,0v200" />
+
+    <!-- Dog head behind bars -->
+    <path
+        android:fillColor="#A1887F"
+        android:pathData="M100,100m-40,0a40,40 0,1 1,80 0a40,40 0,1 1,-80 0" />
+
+    <!-- Dog ears -->
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M70,70l-15,-20l10,25z" />
+    <path
+        android:fillColor="#8D6E63"
+        android:pathData="M130,70l15,-20l-10,25z" />
+
+    <!-- Dog eyes -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M85,90m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M115,90m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+
+    <!-- Dog pupils -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M85,90m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M115,90m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+
+    <!-- Dog nose -->
+    <path
+        android:fillColor="#5D4037"
+        android:pathData="M100,105m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+</vector>

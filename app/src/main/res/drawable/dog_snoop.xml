@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#FFE8E0"
+        android:pathData="M0,0h200v200h-200z" />
+
+    <!-- Dog body (black Pitbull) -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M100,165c-30,0 -50,-25 -50,-50c0,-25 20,-60 50,-60c30,0 50,35 50,60c0,25 -20,50 -50,50z" />
+
+    <!-- Dog face -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M100,80m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
+
+    <!-- Dog ears -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M75,70l-15,-20l5,25z" />
+    <path
+        android:fillColor="#333333"
+        android:pathData="M125,70l15,-20l-5,25z" />
+
+    <!-- Eyes -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M90,75m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M110,75m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+
+    <!-- Nose -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M100,85m-5,0a5,5 0,1 1,10 0a5,5 0,1 1,-10 0" />
+</vector>

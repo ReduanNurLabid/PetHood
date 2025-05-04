@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#C5DAFF"
+        android:pathData="M0,0h200v200h-200z" />
+
+    <!-- Dog body (Golden Retriever) -->
+    <path
+        android:fillColor="#E8B568"
+        android:pathData="M100,165c-30,0 -50,-25 -50,-50c0,-25 20,-60 50,-60c30,0 50,35 50,60c0,25 -20,50 -50,50z" />
+
+    <!-- Dog face -->
+    <path
+        android:fillColor="#E8B568"
+        android:pathData="M100,80m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
+
+    <!-- Dog ears -->
+    <path
+        android:fillColor="#D6A050"
+        android:pathData="M75,70l-20,-15l5,25z" />
+    <path
+        android:fillColor="#D6A050"
+        android:pathData="M125,70l20,-15l-5,25z" />
+
+    <!-- Eyes -->
+    <path
+        android:fillColor="#633D19"
+        android:pathData="M90,75m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#633D19"
+        android:pathData="M110,75m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+
+    <!-- Nose -->
+    <path
+        android:fillColor="#452500"
+        android:pathData="M100,85m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+
+    <!-- Mouth/happy expression -->
+    <path
+        android:strokeColor="#452500"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M95,90c0,5 10,5 10,0" />
+</vector>

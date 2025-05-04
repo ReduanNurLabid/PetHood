@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background -->
+    <path
+        android:fillColor="#FFEBEE"
+        android:pathData="M0,0h200v200h-200z" />
+
+    <!-- Cat body -->
+    <path
+        android:fillColor="#D84315"
+        android:pathData="M100,165c-25,0 -45,-25 -45,-40c0,-15 20,-60 45,-60c25,0 45,45 45,60c0,15 -20,40 -45,40z" />
+
+    <!-- Cat face -->
+    <path
+        android:fillColor="#D84315"
+        android:pathData="M100,80m-22,0a22,22 0,1 1,44 0a22,22 0,1 1,-44 0" />
+
+    <!-- White belly and paws -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M85,95l30,0l0,55l-30,0z" />
+
+    <!-- Cat ears -->
+    <path
+        android:fillColor="#BF360C"
+        android:pathData="M80,60l-10,-15l5,15z" />
+    <path
+        android:fillColor="#BF360C"
+        android:pathData="M120,60l10,-15l-5,15z" />
+
+    <!-- Eyes -->
+    <path
+        android:fillColor="#76FF03"
+        android:pathData="M90,75m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+    <path
+        android:fillColor="#76FF03"
+        android:pathData="M110,75m-4,0a4,4 0,1 1,8 0a4,4 0,1 1,-8 0" />
+
+    <!-- Cat pupils -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M90,75m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M110,75m-2,0a2,2 0,1 1,4 0a2,2 0,1 1,-4 0" />
+
+    <!-- Nose -->
+    <path
+        android:fillColor="#FF6E6E"
+        android:pathData="M100,83l-3,-5l6,0z" />
+
+    <!-- Whiskers -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:pathData="M85,85l-15,0M85,87l-15,3M85,83l-15,-3" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:pathData="M115,85l15,0M115,87l15,3M115,83l15,-3" />
+</vector>

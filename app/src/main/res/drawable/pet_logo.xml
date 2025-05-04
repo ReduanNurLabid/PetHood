@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Main circle background -->
+    <path
+        android:fillColor="#FF415B"
+        android:pathData="M60,60m-60,0a60,60 0,1 1,120 0a60,60 0,1 1,-120 0" />
+
+    <!-- Dog ear left -->
+    <path
+        android:fillColor="#FF8BA0"
+        android:pathData="M35,40 L20,25 L30,55 Z" />
+
+    <!-- Dog ear right -->
+    <path
+        android:fillColor="#FF8BA0"
+        android:pathData="M85,40 L100,25 L90,55 Z" />
+
+    <!-- Dog face -->
+    <path
+        android:fillColor="#FFF6F8"
+        android:pathData="M60,40 A30,33 0 0 1 90,73 L87,90 L33,90 L30,73 A30,33 0 0 1 60,40" />
+
+    <!-- Dog nose -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M60,70 A8,7 0 0 1 68,77 A8,7 0 0 1 52,77 A8,7 0 0 1 60,70" />
+
+    <!-- Left eye -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M45,58 A4,4 0 0 1 53,58 A4,4 0 0 1 45,58" />
+
+    <!-- Right eye -->
+    <path
+        android:fillColor="#333333"
+        android:pathData="M75,58 A4,4 0 0 1 67,58 A4,4 0 0 1 75,58" />
+
+    <!-- Smile line -->
+    <path
+        android:strokeColor="#333333"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:pathData="M50,82 Q60,88 70,82" />
+</vector>
