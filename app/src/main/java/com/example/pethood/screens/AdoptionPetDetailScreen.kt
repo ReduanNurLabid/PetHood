@@ -1,7 +1,5 @@
 package com.example.pethood.screens
 
-import android.content.Intent
-import android.net.Uri
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -28,6 +26,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -41,10 +44,10 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
 import com.example.pethood.data.AdoptionPet
-import com.example.pethood.data.AdoptionPetRepository
 import com.example.pethood.data.PetCategory
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,46 +56,79 @@ fun AdoptionPetDetailScreen(
     onBackClick: () -> Unit,
     navigateToRoute: (Screen) -> Unit = {}
 ) {
-    // Get context and adoption pet repository
     val context = LocalContext.current
-    val adoptionPetRepository: AdoptionPetRepository = PetHoodApplication.getInstance().adoptionPetRepository
 
-    // State to hold the pet
-    var pet: AdoptionPet? = null
+    // Get the adoption pet repository
+    val adoptionPetRepository = PetHoodApplication.getInstance().adoptionPetRepository
 
-    // Retrieve the pet asynchronously
-    adoptionPetRepository.getAdoptionPet(petId){
-        petResult ->
-        if(petResult != null){
-            pet = petResult
-        } else{
-            Toast.makeText(context,"Pet not found",Toast.LENGTH_SHORT).show()
+    // State to hold the pet data
+    var pet by remember { mutableStateOf<AdoptionPet?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    // Load pet data when the screen is first displayed
+    LaunchedEffect(petId) {
+        // First check local cache
+        val cachedPet = adoptionPetRepository.getAdoptionPetById(petId)
+        if (cachedPet != null) {
+            pet = cachedPet
+            isLoading = false
+        } else {
+            // If not in cache, it will try to fetch from Firestore
+            // and we'll check again shortly
+            isLoading = true
+
+            // Wait a moment for the async fetch to complete
+            delay(500)
+
+            // Check again
+            val fetchedPet = adoptionPetRepository.getAdoptionPetById(petId)
+            if (fetchedPet != null) {
+                pet = fetchedPet
+                isLoading = false
+            } else {
+                error = "Pet not found"
+                isLoading = false
+            }
         }
     }
 
-    
-    // If pet is null, show error and return
-    if (pet == null) {
+    // Show loading state
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Loading...", fontSize = 20.sp)
+        }
+        return
+    }
+
+    // Show error if pet not found
+    if (pet == null || error != null) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "Pet not found",
+                text = error ?: "Pet not found",
                 fontSize = 20.sp,
                 color = Color.Gray
             )
         }
         return
     }
-    
+
+    // At this point, pet is guaranteed to be non-null
+    val currentPet = pet!!
+
     // Determine pet category
-    val category = when (pet.category.lowercase()) {
-        "dog" -> PetCategory.DOG.toString()
+    val category = when (currentPet.category.lowercase()) {
+        "dog" -> PetCategory.DOG
         "cat" -> PetCategory.CAT
         else -> PetCategory.OTHER
     }
-    
+
     // Get category color
     val categoryColor = when (category) {
         PetCategory.DOG -> Color(0xFFFF415B)
@@ -101,9 +137,12 @@ fun AdoptionPetDetailScreen(
     }
     
     Scaffold(
-            bottomBar = {
-                BottomNavigationBar(currentRoute = Screen.Home.route, onNavigate = navigateToRoute)
-            }
+        bottomBar = {
+            BottomNavigationBar(
+                currentRoute = Screen.Home.route,
+                onNavigate = navigateToRoute
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -114,17 +153,19 @@ fun AdoptionPetDetailScreen(
             // Pet image with back button
             Box(modifier = Modifier.fillMaxWidth()) {
                 // Pet image
-                if (pet.imageUri.isNotEmpty()) {
+                if (currentPet.imageUri.isNotEmpty()) {
                     val uri = try {
-                        Uri.parse(pet.imageUri)
+                        Uri.parse(currentPet.imageUri)
                     } catch (e: Exception) {
-                        android.util.Log.e("AdoptionPetDetailScreen", "Failed to parse URI: ${e.message}", e)
+                        android.util.Log.e(
+                            "AdoptionPetDetailScreen",
+                            "Failed to parse URI: ${e.message}",
+                            e
+                        )
                         null
                     }
 
                     if (uri != null) {
-
-
                         Image(
                             painter = rememberAsyncImagePainter(
                                 model = uri,
@@ -132,10 +173,10 @@ fun AdoptionPetDetailScreen(
                                     android.util.Log.e(
                                         "AdoptionPetDetailScreen",
                                         "Error loading image: ${it.result.throwable.message}"
-                                                                       )
+                                    )
                                 }
                             ),
-                            contentDescription = pet.name,
+                            contentDescription = currentPet.name,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(300.dp),
@@ -145,7 +186,7 @@ fun AdoptionPetDetailScreen(
                         // Fallback to a default image
                         Image(
                             painter = painterResource(id = R.drawable.pet_logo),
-                            contentDescription = pet.name,
+                            contentDescription = currentPet.name,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(300.dp),
@@ -162,7 +203,7 @@ fun AdoptionPetDetailScreen(
                     
                     Image(
                         painter = painterResource(id = imageRes),
-                        contentDescription = pet.name,
+                        contentDescription = currentPet.name,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp),
@@ -198,7 +239,7 @@ fun AdoptionPetDetailScreen(
                         .align(Alignment.TopEnd)
                 ) {
                     Text(
-                        text = pet.category,
+                        text = currentPet.category,
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
@@ -214,7 +255,7 @@ fun AdoptionPetDetailScreen(
             ) {
                 // Pet name in large text
                 Text(
-                    text = pet.name,
+                    text = currentPet.name,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.DarkGray
@@ -224,7 +265,7 @@ fun AdoptionPetDetailScreen(
                 
                 // Pet breed/type
                 Text(
-                    text = pet.type,
+                    text = currentPet.type,
                     fontSize = 20.sp,
                     color = Color.Gray
                 )
@@ -245,7 +286,7 @@ fun AdoptionPetDetailScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     
                     Text(
-                        text = pet.location,
+                        text = currentPet.location,
                         fontSize = 18.sp,
                         color = Color.Gray
                     )
@@ -265,7 +306,7 @@ fun AdoptionPetDetailScreen(
                 
                 // Full description
                 Text(
-                    text = pet.description.ifEmpty { "No description provided" },
+                    text = currentPet.description.ifEmpty { "No description provided" },
                     fontSize = 16.sp,
                     color = Color.DarkGray,
                     lineHeight = 24.sp
@@ -276,9 +317,9 @@ fun AdoptionPetDetailScreen(
                 // Contact button
                 Button(
                     onClick = {
-                        if (pet.contactNumber.isNotEmpty()) {
-                            val intent = Intent(Intent.ACTION_DIAL).apply {
-                                data = android.net.Uri.parse("tel:${pet.contactNumber}")
+                        if (currentPet.contactNumber.isNotEmpty()) {
+                            val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
+                                data = android.net.Uri.parse("tel:${currentPet.contactNumber}")
                             }
                             try {
                                 context.startActivity(intent)
@@ -315,4 +356,4 @@ fun AdoptionPetDetailScreen(
             }
         }
     }
-} 
+}

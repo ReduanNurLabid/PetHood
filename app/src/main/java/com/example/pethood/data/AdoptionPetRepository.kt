@@ -1,11 +1,16 @@
 package com.example.pethood.data
 
+import android.content.Context
+import android.content.SharedPreferences
 import android.util.Log
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.tasks.await
-
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.core.content.edit
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import java.util.Date
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 /**
  * Repository for managing pets available for adoption
@@ -17,6 +22,10 @@ class AdoptionPetRepository(context: Context) {
     private val sharedPreferences: SharedPreferences =
         context.getSharedPreferences(ADOPTION_PETS_PREFS, Context.MODE_PRIVATE)
     private val gson = Gson()
+    
+    // Firestore database reference
+    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val petsCollection = firestore.collection("adoptionPets")
 
     // Sample data initialization for demo purposes
     init {
@@ -27,69 +36,172 @@ class AdoptionPetRepository(context: Context) {
     /**
      * Add a new pet for adoption
      */
-    fun addAdoptionPet(pet: AdoptionPet) {
+    fun addAdoptionPet(pet: AdoptionPet, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
         try {
             // Validate the pet object before adding
             if (pet.id.isBlank()) {
                 Log.e("AdoptionPetRepository", "Error: Pet ID is blank")
+                onFailure(IllegalArgumentException("Pet ID cannot be blank"))
                 return
             }
             
             // Check if this pet ID already exists (avoid duplicates)
             if (adoptionPets.any { it.id == pet.id }) {
                 Log.w("AdoptionPetRepository", "Warning: Pet with ID ${pet.id} already exists, not adding duplicate")
+                onFailure(IllegalArgumentException("Pet with this ID already exists"))
                 return
             }
             
-            Log.d("AdoptionPetRepository", "Adding pet: ${pet.name}, ID: ${pet.id}, Category: ${pet.category}")
-            adoptionPets.add(pet)
-            // Save to SharedPreferences
-            savePets()
-            Log.d("AdoptionPetRepository", "Successfully added pet, total pets: ${adoptionPets.size}")
+            // Add pet to Firestore
+            petsCollection.document(pet.id)
+                .set(pet)
+                .addOnSuccessListener {
+                    Log.d("AdoptionPetRepository", "Successfully added pet to Firestore: ${pet.name}")
+                    // Add to local cache
+                    adoptionPets.add(pet)
+                    onSuccess()
+                }
+                .addOnFailureListener { e ->
+                    Log.e("AdoptionPetRepository", "Error adding pet to Firestore: ${e.message}", e)
+                    onFailure(e)
+                }
         } catch (e: Exception) {
             Log.e("AdoptionPetRepository", "Error adding pet: ${e.message}", e)
-            throw e // Rethrow to allow proper error handling upstream
+            onFailure(e)
         }
     }
     
     /**
      * Get all pets available for adoption
      */
-    fun getAllAdoptionPets(): List<AdoptionPet> {
-        return adoptionPets.toList()
+    fun getAllAdoptionPets(onSuccess: (List<AdoptionPet>) -> Unit, onFailure: (Exception) -> Unit) {
+        petsCollection
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val petsList = mutableListOf<AdoptionPet>()
+                for (document in snapshot.documents) {
+                    document.toObject(AdoptionPet::class.java)?.let { pet ->
+                        petsList.add(pet)
+                    }
+                }
+                // Update local cache
+                adoptionPets.clear()
+                adoptionPets.addAll(petsList)
+                onSuccess(petsList)
+            }
+            .addOnFailureListener { e ->
+                Log.e("AdoptionPetRepository", "Error getting adoption pets: ${e.message}", e)
+                // Fall back to local cache if available
+                if (adoptionPets.isNotEmpty()) {
+                    onSuccess(adoptionPets.toList())
+                } else {
+                    onFailure(e)
+                }
+            }
     }
     
     /**
      * Get pets available for adoption by category
      */
-    fun getAdoptionPetsByCategory(category: String): List<AdoptionPet> {
-        return adoptionPets.filter { it.category.equals(category, ignoreCase = true) }
+    fun getAdoptionPetsByCategory(category: String, onSuccess: (List<AdoptionPet>) -> Unit, onFailure: (Exception) -> Unit) {
+        petsCollection
+            .whereEqualTo("category", category)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val petsList = mutableListOf<AdoptionPet>()
+                for (document in snapshot.documents) {
+                    document.toObject(AdoptionPet::class.java)?.let { pet ->
+                        petsList.add(pet)
+                    }
+                }
+                onSuccess(petsList)
+            }
+            .addOnFailureListener { e ->
+                Log.e("AdoptionPetRepository", "Error getting pets by category: ${e.message}", e)
+                // Fall back to local filtering
+                val filteredPets = adoptionPets.filter { 
+                    it.category.equals(category, ignoreCase = true) 
+                }
+                onSuccess(filteredPets)
+            }
     }
     
     /**
      * Get adoption pets added by a specific user
      */
-    fun getAdoptionPetsByUser(userId: String): List<AdoptionPet> {
-        return adoptionPets.filter { it.userId == userId }
+    fun getAdoptionPetsByUser(userId: String, onSuccess: (List<AdoptionPet>) -> Unit, onFailure: (Exception) -> Unit) {
+        petsCollection
+            .whereEqualTo("userId", userId)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val petsList = mutableListOf<AdoptionPet>()
+                for (document in snapshot.documents) {
+                    document.toObject(AdoptionPet::class.java)?.let { pet ->
+                        petsList.add(pet)
+                    }
+                }
+                onSuccess(petsList)
+            }
+            .addOnFailureListener { e ->
+                Log.e("AdoptionPetRepository", "Error getting pets by user: ${e.message}", e)
+                // Fall back to local filtering
+                val filteredPets = adoptionPets.filter { it.userId == userId }
+                onSuccess(filteredPets)
+            }
     }
     
     /**
      * Remove an adoption pet by ID
      */
-    fun removeAdoptionPet(petId: String) {
-        val petToRemove = adoptionPets.find { it.id == petId }
-        petToRemove?.let {
-            adoptionPets.remove(it)
-            // Save changes to SharedPreferences
-            savePets()
-        }
+    fun removeAdoptionPet(petId: String, onSuccess: () -> Unit, onFailure: (Exception) -> Unit) {
+        petsCollection.document(petId)
+            .delete()
+            .addOnSuccessListener {
+                // Remove from local cache
+                val petToRemove = adoptionPets.find { it.id == petId }
+                petToRemove?.let {
+                    adoptionPets.remove(it)
+                }
+                onSuccess()
+            }
+            .addOnFailureListener { e ->
+                Log.e("AdoptionPetRepository", "Error removing pet: ${e.message}", e)
+                onFailure(e)
+            }
     }
     
     /**
      * Get a specific adoption pet by its ID
      */
     fun getAdoptionPetById(id: String): AdoptionPet? {
-        return adoptionPets.find { it.id == id }
+        // First check local cache
+        val localPet = adoptionPets.find { it.id == id }
+        if (localPet != null) {
+            return localPet
+        }
+        
+        // If not found locally, try to fetch from Firestore
+        var pet: AdoptionPet? = null
+        petsCollection.document(id)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    pet = document.toObject(AdoptionPet::class.java)
+                    // Add to local cache if found
+                    pet?.let {
+                        if (!adoptionPets.contains(it)) {
+                            adoptionPets.add(it)
+                        }
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("AdoptionPetRepository", "Error getting pet by ID: ${e.message}", e)
+            }
+            
+        // This is a synchronous method, so we need to return immediately
+        // The fetch from Firestore happens asynchronously, so we return local results
+        return localPet
     }
     
     /**

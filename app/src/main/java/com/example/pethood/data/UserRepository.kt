@@ -1,105 +1,290 @@
 package com.example.pethood.data
 
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ktx.toObject
-import kotlinx.coroutines.tasks.await
+import android.content.Context
+import android.content.SharedPreferences
+import android.util.Log
+import androidx.core.content.edit
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+import kotlin.coroutines.suspendCoroutine
 
 /**
- * Repository for handling user data using Firestore.
+ * Repository for handling user authentication and storage
  */
-class UserRepository {
-    private val firestore = FirebaseFirestore.getInstance()
-    private val usersCollection = firestore.collection("users")
-
+class UserRepository(context: Context) {
+    
+    private val sharedPreferences: SharedPreferences =
+        context.getSharedPreferences(USER_PREFS, Context.MODE_PRIVATE)
+    private val gson = Gson()
+    
+    // Firebase Authentication instance
+    private val auth: FirebaseAuth = Firebase.auth
+    
+    // Firestore database instance
+    private val firestore: FirebaseFirestore = Firebase.firestore
+    
     /**
-     * Retrieves a user by their ID.
-     * @param userId The ID of the user to retrieve.
-     * @return The User object if found, null otherwise.
+     * Registers a new user with Firebase Authentication
+     * @return true if registration was successful, false if email already exists
      */
-    suspend fun getUser(userId: String): User? {
-        return try {
-            val document = usersCollection.document(userId).get().await()
-            if (document.exists()) {
-                document.toObject<User>()
-            } else {
-                null
+    suspend fun registerUser(user: User): Boolean = suspendCoroutine { continuation ->
+        auth.createUserWithEmailAndPassword(user.email, user.password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    // Update profile
+                    val firebaseUser = task.result?.user
+                    val profileUpdates = userProfileChangeRequest {
+                        displayName = user.name
+                    }
+                    
+                    // Save additional user data to Firestore
+                    firebaseUser?.uid?.let { uid ->
+                        val userData = hashMapOf(
+                            "id" to uid,
+                            "email" to user.email,
+                            "name" to user.name,
+                            "phoneNumber" to user.phoneNumber,
+                            "profileImageUrl" to user.profileImageUrl
+                        )
+                        
+                        firestore.collection("users")
+                            .document(uid)
+                            .set(userData)
+                            .addOnSuccessListener {
+                                // Update display name
+                                firebaseUser.updateProfile(profileUpdates)
+                                    .addOnSuccessListener {
+                                        // Save user to local storage
+                                        val localUser = User(
+                                            id = uid,
+                                            email = user.email,
+                                            password = user.password, // Note: Don't actually store passwords!
+                                            name = user.name,
+                                            phoneNumber = user.phoneNumber,
+                                            profileImageUrl = user.profileImageUrl
+                                        )
+                                        saveCurrentUser(localUser)
+                                        continuation.resume(true)
+                                    }
+                                    .addOnFailureListener { e ->
+                                        Log.e("UserRepository", "Failed to update profile", e)
+                                        continuation.resume(true) // Still consider it a success
+                                    }
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("UserRepository", "Failed to save user to Firestore", e)
+                                continuation.resume(false)
+                            }
+                    } ?: continuation.resume(false)
+                } else {
+                    Log.e("UserRepository", "Registration failed", task.exception)
+                    continuation.resume(false)
+                }
             }
-        } catch (e: Exception) {
-            // Handle exceptions (e.g., network issues)
-            e.printStackTrace()
-            null
-        }
     }
-
+    
     /**
-     * Adds a new user to Firestore.
-     * @param user The User object to add.
-     * @return true if successful, false otherwise.
+     * Logs in a user with Firebase Authentication
+     * @return the User if credentials are valid, null otherwise
      */
-    suspend fun addUser(user: User): Boolean {
-        return try {
-            // Let Firestore auto-generate the document ID
-            val documentReference = usersCollection.document()
-            // Set the generated ID to the user object
-            val userWithId = user.copy(id = documentReference.id)
-            // Set the data using the reference.
-            documentReference.set(userWithId).await()
-            true
-        } catch (e: Exception) {
-            // Handle exceptions
-            e.printStackTrace()
-            false
-        }
-    }
-
-    /**
-     * Updates an existing user in Firestore.
-     * @param user The updated User object.
-     * @return true if successful, false otherwise.
-     */
-    suspend fun updateUser(user: User): Boolean {
-        return try {
-            usersCollection.document(user.id).set(user).await()
-            true
-        } catch (e: Exception) {
-            // Handle exceptions
-            e.printStackTrace()
-            false
-        }
-    }
-
-    /**
-     * Deletes a user from Firestore.
-     * @param userId The ID of the user to delete.
-     * @return true if successful, false otherwise.
-     */
-    suspend fun deleteUser(userId: String): Boolean {
-        return try {
-            usersCollection.document(userId).delete().await()
-            true
-        } catch (e: Exception) {
-            // Handle exceptions
-            e.printStackTrace()
-            false
-        }
-    }    
-    /**
-    * Retrieves a user by their email
-    * @param userEmail The email of the user to retrieve.
-    * @return The User object if found, null otherwise.
-    */
-    suspend fun getUserByEmail(userEmail: String): User? {
-        return try {
-            val querySnapshot = usersCollection.whereEqualTo("email", userEmail).get().await()
-            if (!querySnapshot.isEmpty) {
-                querySnapshot.documents[0].toObject<User>()
-            } else {
-                null
+    suspend fun loginUser(email: String, password: String): User? = suspendCoroutine { continuation ->
+        auth.signInWithEmailAndPassword(email, password)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val firebaseUser = task.result?.user
+                    if (firebaseUser != null) {
+                        // Get user data from Firestore
+                        firestore.collection("users").document(firebaseUser.uid)
+                            .get()
+                            .addOnSuccessListener { document ->
+                                if (document != null && document.exists()) {
+                                    // Create user from document
+                                    val user = User(
+                                        id = firebaseUser.uid,
+                                        email = firebaseUser.email ?: email,
+                                        password = password, // Note: Don't store actual passwords
+                                        name = document.getString("name") ?: "",
+                                        phoneNumber = document.getString("phoneNumber") ?: "",
+                                        profileImageUrl = document.getString("profileImageUrl") ?: ""
+                                    )
+                                    saveCurrentUser(user)
+                                    continuation.resume(user)
+                                } else {
+                                    // If document doesn't exist, create a basic user
+                                    val user = User(
+                                        id = firebaseUser.uid,
+                                        email = firebaseUser.email ?: email,
+                                        password = password,
+                                        name = firebaseUser.displayName ?: "",
+                                        phoneNumber = "",
+                                        profileImageUrl = firebaseUser.photoUrl?.toString() ?: ""
+                                    )
+                                    saveCurrentUser(user)
+                                    continuation.resume(user)
+                                }
+                            }
+                            .addOnFailureListener { e ->
+                                Log.e("UserRepository", "Failed to get user data", e)
+                                // Fall back to basic user data
+                                val user = User(
+                                    id = firebaseUser.uid,
+                                    email = firebaseUser.email ?: email,
+                                    password = password,
+                                    name = firebaseUser.displayName ?: "",
+                                    phoneNumber = "",
+                                    profileImageUrl = firebaseUser.photoUrl?.toString() ?: ""
+                                )
+                                saveCurrentUser(user)
+                                continuation.resume(user)
+                            }
+                    } else {
+                        continuation.resume(null)
+                    }
+                } else {
+                    Log.e("UserRepository", "Login failed", task.exception)
+                    continuation.resume(null)
+                }
             }
-        } catch (e: Exception) {
-            // Handle exceptions (e.g., network issues)
-            e.printStackTrace()
-            null
+    }
+    
+    /**
+     * Save the current user session
+     */
+    fun saveCurrentUser(user: User) {
+        sharedPreferences.edit {
+            putString(CURRENT_USER_KEY, gson.toJson(user))
         }
+    }
+    
+    /**
+     * Get the current logged in user
+     */
+    fun getCurrentUser(): User? {
+        val firebaseUser = auth.currentUser
+        
+        // If Firebase user exists but local storage doesn't have it, create a basic user
+        if (firebaseUser != null) {
+            val userJson = sharedPreferences.getString(CURRENT_USER_KEY, null)
+            return if (userJson != null) {
+                gson.fromJson(userJson, User::class.java)
+            } else {
+                // Create a basic user from Firebase user
+                val user = User(
+                    id = firebaseUser.uid,
+                    email = firebaseUser.email ?: "",
+                    password = "", // We don't store actual passwords
+                    name = firebaseUser.displayName ?: "",
+                    phoneNumber = "",
+                    profileImageUrl = firebaseUser.photoUrl?.toString() ?: ""
+                )
+                saveCurrentUser(user)
+                user
+            }
+        }
+        
+        return null
+    }
+    
+    /**
+     * Update the current user's profile image URL
+     * @return true if update was successful
+     */
+    suspend fun updateProfileImageUrl(imageUrl: String): Boolean = suspendCoroutine { continuation ->
+        val firebaseUser = auth.currentUser
+        if (firebaseUser == null) {
+            continuation.resume(false)
+            return@suspendCoroutine
+        }
+        
+        // Update profile image URL in Firestore
+        firestore.collection("users").document(firebaseUser.uid)
+            .update("profileImageUrl", imageUrl)
+            .addOnSuccessListener {
+                // Update local user data
+                val currentUser = getCurrentUser()
+                if (currentUser != null) {
+                    val updatedUser = currentUser.copy(profileImageUrl = imageUrl)
+                    saveCurrentUser(updatedUser)
+                    continuation.resume(true)
+                } else {
+                    continuation.resume(false)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("UserRepository", "Failed to update profile image URL", e)
+                continuation.resume(false)
+            }
+    }
+    
+    /**
+     * Update the current user's password
+     * @return true if update was successful
+     */
+    suspend fun updatePassword(currentPassword: String, newPassword: String): Boolean = suspendCoroutine { continuation ->
+        val firebaseUser = auth.currentUser
+        if (firebaseUser == null) {
+            continuation.resume(false)
+            return@suspendCoroutine
+        }
+        
+        // Re-authenticate user to confirm current password
+        val credential = com.google.firebase.auth.EmailAuthProvider.getCredential(
+            firebaseUser.email ?: "", currentPassword
+        )
+        firebaseUser.reauthenticate(credential)
+            .addOnSuccessListener {
+                // Password verified, now update it
+                firebaseUser.updatePassword(newPassword)
+                    .addOnSuccessListener {
+                        // Update local user data
+                        val currentUser = getCurrentUser()
+                        if (currentUser != null) {
+                            val updatedUser = currentUser.copy(password = newPassword)
+                            saveCurrentUser(updatedUser)
+                            continuation.resume(true)
+                        } else {
+                            continuation.resume(false)
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("UserRepository", "Failed to update password", e)
+                        continuation.resume(false)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("UserRepository", "Failed to reauthenticate user", e)
+                continuation.resume(false)
+            }
+    }
+    
+    /**
+     * Clear the current user session (logout)
+     */
+    fun logout() {
+        auth.signOut()
+        sharedPreferences.edit {
+            remove(CURRENT_USER_KEY)
+        }
+    }
+    
+    /**
+     * Check if a user is logged in
+     */
+    fun isLoggedIn(): Boolean {
+        return auth.currentUser != null
+    }
+    
+    /**
+     * Get the current user's ID
+     */
+    fun getCurrentUserId(): String {
+        return auth.currentUser?.uid ?: "default_user"
+    }
+    
+    companion object {
+        private const val USER_PREFS = "user_prefs"
+        private const val CURRENT_USER_KEY = "current_user"
     }
 }

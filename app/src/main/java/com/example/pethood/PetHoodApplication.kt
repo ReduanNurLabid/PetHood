@@ -36,5 +36,8 @@ class PetHoodApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        
+        // Initialize Firebase
+        FirebaseApp.initializeApp(this)
     }
 }
