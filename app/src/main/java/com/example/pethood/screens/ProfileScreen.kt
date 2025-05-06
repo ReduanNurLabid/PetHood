@@ -3,6 +3,7 @@ package com.example.pethood.screens
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,13 +52,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.Popup
 import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.PetHoodApplication
+import com.example.pethood.data.User
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.theme.PetHoodTheme
 import com.example.pethood.ui.theme.PrimaryRed
+import kotlinx.coroutines.flow.Flow
 import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +71,18 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val userRepository = PetHoodApplication.getInstance().userRepository
-    val currentUser = remember { userRepository.getCurrentUser() }
+    var currentUser by remember { mutableStateOf<User?>(null) }
+    
+    // Fetch user details
+    val userFlow: Flow<User?> = remember {
+        userRepository.getUser()
+    }
+
+    androidx.compose.runtime.LaunchedEffect(userFlow) {
+        userFlow.collect { user ->
+            currentUser = user
+        }
+    }
     
     // State variables for the dialogs
     var showImageUrlDialog by remember { mutableStateOf(false) }
@@ -172,7 +186,7 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = "User Information",
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.DarkGray
                     )
@@ -181,18 +195,22 @@ fun ProfileScreen(
 
                     if (currentUser != null) {
                         Text(
-                            text = "Name: ${currentUser.name}",
-                            fontSize = 16.sp,
-                            color = Color.DarkGray
+                            text = "Name",
+                            fontSize = 18.sp,
+                            color = Color.DarkGray,
+                            fontWeight = FontWeight.Bold,
                         )
+                        Text(text = "${currentUser.name}", color = Color.Gray)
 
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Email: ${currentUser.email}",
-                            fontSize = 16.sp,
-                            color = Color.DarkGray
+                            text = "Email",
+                            fontSize = 18.sp,
+                            color = Color.DarkGray,
+                            fontWeight = FontWeight.Bold,
                         )
+                        Text(text = "${currentUser.email}", color = Color.Gray)
                         
                         Spacer(modifier = Modifier.height(4.dp))
 
@@ -227,7 +245,7 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = "Account Settings",
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.DarkGray
                     )
@@ -307,7 +325,7 @@ fun ProfileScreen(
     
     // Profile Image URL Dialog
     if (showImageUrlDialog) {
-        Dialog(onDismissRequest = { showImageUrlDialog = false }) {
+        Popup(onDismissRequest = { showImageUrlDialog = false }) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -376,7 +394,7 @@ fun ProfileScreen(
     
     // Change Password Dialog
     if (showPasswordDialog) {
-        Dialog(onDismissRequest = { showPasswordDialog = false }) {
+        Popup(onDismissRequest = { showPasswordDialog = false }) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -390,7 +408,7 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = "Change Password",
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.DarkGray
                     )
@@ -515,7 +533,7 @@ fun ProfileScreen(
 
 @Preview(showBackground = true)
 @Composable
-fun ProfileScreenPreview() {
+fun ProfileScreenPreview(){
     PetHoodTheme {
         ProfileScreen()
     }

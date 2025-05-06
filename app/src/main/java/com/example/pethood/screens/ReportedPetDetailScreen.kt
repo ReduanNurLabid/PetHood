@@ -1,5 +1,7 @@
 package com.example.pethood.screens
 
+import android.annotation.SuppressLint
+import android.app.Application
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
@@ -33,12 +35,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.platform.LocalSavedStateRegistryOwner
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,41 +53,57 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
+import com.example.pethood.data.Pet
 import com.example.pethood.data.ReportedPet
+import com.example.pethood.data.ReportedPetRepository
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.theme.PetHoodTheme
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@SuppressLint("CoroutineCreationDuringComposition")
 @Composable
 fun ReportedPetDetailScreen(
-    pet: ReportedPet,
+    petId: String,
     onBackClick: () -> Unit,
     onContactClick: () -> Unit = {},
     navigateToRoute: (Screen) -> Unit,
     isCurrentUserReporter: Boolean = false,
-    onPutUpForAdoptionClick: () -> Unit = {}
+    onPutUpForAdoptionClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
-    val statusColor = if (pet.isMissing) Color(0xFFA30000) else Color(0xFF4CAF50)
-    val statusText = if (pet.isMissing) "Missing" else "Found"
+    val scope = rememberCoroutineScope()
+    val reportedPetRepository =
+        PetHoodApplication.getInstance().reportedPetRepository
+    var pet by remember { mutableStateOf<ReportedPet?>(null) }
+    scope.launch {
+        pet = reportedPetRepository.getReportedPet(petId)
+    }
+
+    if(pet==null){
+        return
+    }
+
+    val statusColor = if (pet!!.isMissing) Color(0xFFA30000) else Color(0xFF4CAF50)
+    val statusText = if (pet!!.isMissing) "Missing" else "Found"
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-    val formattedDate = dateFormat.format(pet.date)
-    
+    val formattedDate = dateFormat.format(pet!!.date)
+
     // Show contact dialog
     var showContactDialog by remember { mutableStateOf(false) }
-    
+
     if (showContactDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showContactDialog = false },
             title = { Text("Contact Information") },
-            text = { 
+            text = {
                 Column {
-                    Text("Would you like to contact about this ${if (pet.isMissing) "missing" else "found"} pet?")
+                    Text("Would you like to contact about this ${if (pet!!.isMissing) "missing" else "found"} pet?")
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Phone: ${pet.contactNumber.ifEmpty { "Not provided" }}")
+                    Text("Phone: ${pet!!.contactNumber.ifEmpty { "Not provided" }}")
                 }
             },
             confirmButton = {
@@ -89,9 +111,9 @@ fun ReportedPetDetailScreen(
                     onClick = {
                         showContactDialog = false
                         // Open phone dialer with the actual contact number
-                        if (pet.contactNumber.isNotEmpty()) {
+                        if (pet!!.contactNumber.isNotEmpty()) {
                             val intent = Intent(Intent.ACTION_DIAL).apply {
-                                data = Uri.parse("tel:${pet.contactNumber}")
+                                data = Uri.parse("tel:${pet!!.contactNumber}")
                             }
                             try {
                                 context.startActivity(intent)
@@ -111,7 +133,7 @@ fun ReportedPetDetailScreen(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = statusColor),
-                    enabled = pet.contactNumber.isNotEmpty()
+                    enabled = pet!!.contactNumber.isNotEmpty()
                 ) {
                     Text("Call")
                 }
@@ -129,26 +151,22 @@ fun ReportedPetDetailScreen(
 
     // Show confirmation dialog for marking pet as found/adopted
     var showConfirmationDialog by remember { mutableStateOf(false) }
-    
+
     if (showConfirmationDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { showConfirmationDialog = false },
-            title = { Text(if (pet.isMissing) "Mark as Found" else "Mark as Adopted") },
-            text = { 
+            title = { Text(if (pet!!.isMissing) "Mark as Found" else "Mark as Adopted") },
+            text = {
                 Text(
-                    if (pet.isMissing) 
-                        "Are you sure this pet has been found? This will remove the pet from the missing pets listings." 
-                    else 
+                    if (pet!!.isMissing)
+                        "Are you sure this pet has been found? This will remove the pet from the missing pets listings."
+                    else
                         "Are you sure this pet has been handed to adoption? This will remove the pet from the found pets listings."
                 )
             },
             confirmButton = {
                 Button(
-                    onClick = {
-                        // Get repository and delete the pet
-                        val reportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
-                        reportedPetRepository.deletePet(pet.id, pet.isMissing)
-                        
+                    onClick = {                        scope.launch { reportedPetRepository.deletePet(pet!!.id, pet!!.isMissing) }
                         Toast.makeText(
                             context,
                             if (pet.isMissing) "Pet marked as found!" else "Pet marked as adopted!",
@@ -192,15 +210,15 @@ fun ReportedPetDetailScreen(
             // Pet image with back button
             Box(modifier = Modifier.fillMaxWidth()) {
                 // Pet image
-                if (pet.imageUri != null && pet.imageUri.isNotEmpty()) {
+                if (pet!!.imageUri != null && pet!!.imageUri.isNotEmpty()) {
                     // Display uploaded image
                     val uri = try {
-                        Uri.parse(pet.imageUri)
+                        Uri.parse(pet!!.imageUri)
                     } catch (e: Exception) {
                         android.util.Log.e(
                             "ReportedPetDetailScreen",
                             "Failed to parse URI: ${e.message}",
-                            e
+                            e,
                         )
                         null
                     }
@@ -209,7 +227,7 @@ fun ReportedPetDetailScreen(
                         Image(
                             painter = rememberAsyncImagePainter(
                                 model = uri,
-                                onError = {
+                                onError = {e->
                                     android.util.Log.e(
                                         "ReportedPetDetailScreen",
                                         "Error loading image: ${it.result.throwable.message}"
@@ -217,7 +235,7 @@ fun ReportedPetDetailScreen(
                                 }
                             ),
                             contentDescription = pet.name,
-                            modifier = Modifier
+                            modifier = Modifier.
                                 .fillMaxWidth()
                                 .height(300.dp),
                             contentScale = ContentScale.Crop
@@ -226,10 +244,10 @@ fun ReportedPetDetailScreen(
                         // Fallback to template image if URI parsing failed
                         Image(
                             painter = painterResource(id = R.drawable.pet_logo),
-                            contentDescription = pet.name ?: "Pet",
+                            contentDescription = pet!!.name ?: "Pet",
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(300.dp),
+                                .height(300.dp) ,
                             contentScale = ContentScale.Crop
                         )
                     }
@@ -237,15 +255,15 @@ fun ReportedPetDetailScreen(
                     // Display template image
                     val resourceId = if (pet.imageUrl != null && pet.imageUrl.isNotEmpty()) {
                         context.resources.getIdentifier(
-                            pet.imageUrl, "drawable", context.packageName
+                            pet!!.imageUrl, "drawable", context.packageName
                         )
                     } else 0
-                    
+
                     val imageRes = if (resourceId != 0) resourceId else R.drawable.pet_logo
-                    
+
                     Image(
                         painter = painterResource(id = imageRes),
-                        contentDescription = pet.name ?: "Pet",
+                        contentDescription = pet!!.name ?: "Pet",
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(300.dp),
@@ -297,13 +315,13 @@ fun ReportedPetDetailScreen(
             ) {
                 // Pet name and type
                 Text(
-                    text = pet.name ?: "Unknown Pet",
+                    text = pet!!.name ?: "Unknown Pet",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.DarkGray
                 )
 
-                Text(
+               Text(
                     text = pet.type ?: "Unknown Type",
                     fontSize = 16.sp,
                     color = Color.Gray
@@ -317,14 +335,14 @@ fun ReportedPetDetailScreen(
                 ) {
                     ReportInfoCard(
                         title = "Date Reported",
-                        value = formattedDate,
+                        value = formattedDate ,
                         modifier = Modifier.weight(1f)
                     )
 
                     // Location card
                     ReportInfoCard(
-                        title = if (pet.isMissing) "Last Seen" else "Found At",
-                        value = pet.lastSeen,
+                        title = if (pet!!.isMissing) "Last Seen" else "Found At",
+                        value = pet!!.lastSeen,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -342,7 +360,7 @@ fun ReportedPetDetailScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = pet.description,
+                    text = pet!!.description,
                     fontSize = 14.sp,
                     color = Color.DarkGray,
                     lineHeight = 24.sp
@@ -351,7 +369,7 @@ fun ReportedPetDetailScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Show different buttons based on whether current user is the reporter
-                if (isCurrentUserReporter) {
+                if (isCurrentUserReporter ) {
                     Column {
                         // Mark as found/adopted button
                         OutlinedButton(
@@ -365,7 +383,7 @@ fun ReportedPetDetailScreen(
                                 contentColor = statusColor
                             )
                         ) {
-                            Text(
+                           Text(
                                 text = if (pet.isMissing) "Mark as Found" else "Mark as Adopted",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
@@ -385,7 +403,7 @@ fun ReportedPetDetailScreen(
                                     containerColor = Color(0xFF9C27B0) // Purple color for adoption
                                 )
                             ) {
-                                Text(
+                              Text(
                                     text = "Put Up for Adoption",
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
@@ -397,10 +415,10 @@ fun ReportedPetDetailScreen(
                 } else {
                     // Other users can directly call the reporter
                     Button(
-                        onClick = { 
-                            if (pet.contactNumber.isNotEmpty()) {
+                        onClick = {
+                            if (pet!!.contactNumber.isNotEmpty()) {
                                 val intent = Intent(Intent.ACTION_DIAL).apply {
-                                    data = Uri.parse("tel:${pet.contactNumber}")
+                                    data = Uri.parse("tel:${pet!!.contactNumber}")
                                 }
                                 try {
                                     context.startActivity(intent)
@@ -426,10 +444,10 @@ fun ReportedPetDetailScreen(
                         colors = ButtonDefaults.buttonColors(
                             containerColor = statusColor
                         ),
-                        enabled = pet.contactNumber.isNotEmpty()
+                        enabled = pet!!.contactNumber.isNotEmpty()
                     ) {
                         Text(
-                            text = if (pet.isMissing) "I've Found This Pet" else "I'm The Owner",
+                            text = if (pet!!.isMissing) "I've Found This Pet" else "I'm The Owner",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -491,7 +509,7 @@ fun MissingPetDetailScreenAsReporterPreview() {
         date = Date()
     )
     
-    PetHoodTheme {
+   PetHoodTheme {
         ReportedPetDetailScreen(
             pet = samplePet,
             onBackClick = {},

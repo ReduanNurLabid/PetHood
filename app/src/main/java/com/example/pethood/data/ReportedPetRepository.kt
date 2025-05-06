@@ -1,30 +1,18 @@
 package com.example.pethood.data
 
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.core.content.edit
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.google.firebase.firestore.FirebaseFirestore
 import java.util.Date
+import kotlinx.coroutines.tasks.await
 
 /**
  * Repository for handling reported pets (missing and found)
  */
-class ReportedPetRepository(context: Context) {
+class ReportedPetRepository() {
 
-    private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences(REPORTED_PETS_PREFS, Context.MODE_PRIVATE)
-    private val gson = Gson()
+    private val firestore = FirebaseFirestore.getInstance()
+    private val reportedPetsCollection = firestore.collection("reportedPets")
 
-    // StateFlow for observing changes in reported pets
-    private val _missingPets = MutableStateFlow<List<ReportedPet>>(emptyList())
-    val missingPets: StateFlow<List<ReportedPet>> = _missingPets.asStateFlow()
-
-    private val _foundPets = MutableStateFlow<List<ReportedPet>>(emptyList())
-    val foundPets: StateFlow<List<ReportedPet>> = _foundPets.asStateFlow()
+    /*
 
     init {
         // Load pets from storage when repository is created
@@ -33,16 +21,16 @@ class ReportedPetRepository(context: Context) {
 
     /**
      * Add a new reported pet
-     */
-    fun reportPet(pet: ReportedPet): Long {
+     *//*
+    suspend fun reportPet(pet: ReportedPet): Long {
         val pets = if (pet.isMissing) {
             getAllMissingPets().toMutableList()
         } else {
             getAllFoundPets().toMutableList()
         }
 
-        // Generate new ID
-        val newId = (pets.maxOfOrNull { it.id } ?: 0) + 1
+        // Generate new ID, changed to string
+        val newId = (pets.maxOfOrNull { it.id?.toLong() ?: 0 } ?: 0) + 1
         val petWithId = pet.copy(id = newId)
 
         // Add to list
@@ -60,26 +48,52 @@ class ReportedPetRepository(context: Context) {
         return newId
     }
 
-    /**
-     * Get all missing pets
-     */
-    fun getAllMissingPets(): List<ReportedPet> {
-        return _missingPets.value
+    */
+    suspend fun addReportedPet(pet: ReportedPet) {
+        val documentReference = reportedPetsCollection.document()
+        val petWithId = pet.copy(id = documentReference.id)
+        documentReference.set(petWithId).await()
     }
 
     /**
-     * Get all found pets
+     * Get all reported pets
      */
-    fun getAllFoundPets(): List<ReportedPet> {
-        return _foundPets.value
+    suspend fun getAllReportedPets(): List<ReportedPet> {
+        val snapshot = reportedPetsCollection.get().await()
+        return snapshot.toObjects(ReportedPet::class.java)
     }
 
-    /**
-     * Get a pet by ID
-     */
-    fun getPetById(id: Long, isMissing: Boolean): ReportedPet? {
-        val pets = if (isMissing) getAllMissingPets() else getAllFoundPets()
-        return pets.find { it.id == id }
+    suspend fun getAllMissingPets(): List<ReportedPet> {
+        val snapshot = reportedPetsCollection.whereEqualTo("isMissing", true).get().await()
+        return snapshot.toObjects(ReportedPet::class.java)
+    }
+
+    suspend fun getAllFoundPets(): List<ReportedPet> {
+        val snapshot = reportedPetsCollection.whereEqualTo("isMissing", false).get().await()
+        return snapshot.toObjects(ReportedPet::class.java)
+    }
+    
+    suspend fun updateReportedPet(pet: ReportedPet) {
+        pet.id?.let {
+            reportedPetsCollection.document(it).set(pet).await()
+        }
+    }
+    
+    suspend fun deleteReportedPet(petId: String) {
+        reportedPetsCollection.document(petId).delete().await()
+    }
+
+    suspend fun getPetById(id: String): ReportedPet? {
+        return try {
+            val documentSnapshot = reportedPetsCollection.document(id).get().await()
+            if (documentSnapshot.exists()) {
+                documentSnapshot.toObject(ReportedPet::class.java)
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**
@@ -87,24 +101,11 @@ class ReportedPetRepository(context: Context) {
      */
     fun deletePet(id: Long, isMissing: Boolean) {
         val pets = if (isMissing) {
-            getAllMissingPets().toMutableList()
+            //getAllMissingPets().toMutableList()
+            emptyList<ReportedPet>()
         } else {
-            getAllFoundPets().toMutableList()
-        }
-        
-        // Find and remove the pet
-        val petIndex = pets.indexOfFirst { it.id == id }
-        if (petIndex >= 0) {
-            pets.removeAt(petIndex)
-            
-            // Save the updated list
-            if (isMissing) {
-                saveMissingPets(pets)
-                _missingPets.value = pets
-            } else {
-                saveFoundPets(pets)
-                _foundPets.value = pets
-            }
+           // getAllFoundPets().toMutableList()
+            emptyList<ReportedPet>()
         }
     }
 
@@ -112,18 +113,19 @@ class ReportedPetRepository(context: Context) {
      * Search for pets by query string
      */
     fun searchPets(query: String, isMissing: Boolean): List<ReportedPet> {
-        val pets = if (isMissing) getAllMissingPets() else getAllFoundPets()
-
-        return if (query.isBlank()) {
-            pets
-        } else {
-            pets.filter {
-                it.name.contains(query, ignoreCase = true) ||
-                        it.type.contains(query, ignoreCase = true) ||
-                        it.lastSeen.contains(query, ignoreCase = true) ||
-                        it.description.contains(query, ignoreCase = true)
-            }
-        }
+        return emptyList<ReportedPet>()
+//        val pets = if (isMissing) getAllMissingPets() else getAllFoundPets()
+//
+//        return if (query.isBlank()) {
+//            pets
+//        } else {
+//            pets.filter {
+//                it.name.contains(query, ignoreCase = true) ||
+//                        it.type.contains(query, ignoreCase = true) ||
+//                        it.lastSeen.contains(query, ignoreCase = true) ||
+//                        it.description.contains(query, ignoreCase = true)
+//            }
+//        }
     }
 
     /**
@@ -131,10 +133,11 @@ class ReportedPetRepository(context: Context) {
      */
     fun addSampleData() {
         // Check if we already have data
+        /*
         if (_missingPets.value.isNotEmpty() || _foundPets.value.isNotEmpty()) {
             return
         }
-
+        */
         // Sample missing pets
         val missingPets = listOf(
             ReportedPet(
@@ -195,65 +198,10 @@ class ReportedPetRepository(context: Context) {
             )
         )
 
-        // Save the sample data
-        saveMissingPets(missingPets)
-        saveFoundPets(foundPets)
+        // Save the sample data, changed to add in db
+        missingPets.forEach { addReportedPet(it)}
+        foundPets.forEach { addReportedPet(it)}
 
-        // Update state flows
-        _missingPets.value = missingPets
-        _foundPets.value = foundPets
     }
 
-    // Private helper methods
-
-    private fun loadPets() {
-        val missingPets = getMissingPetsFromPrefs()
-        val foundPets = getFoundPetsFromPrefs()
-
-        _missingPets.value = missingPets
-        _foundPets.value = foundPets
-
-        // If no pets are loaded, add sample data
-        if (missingPets.isEmpty() && foundPets.isEmpty()) {
-            addSampleData()
-        }
-    }
-
-    private fun getMissingPetsFromPrefs(): List<ReportedPet> {
-        val petsJson = sharedPreferences.getString(MISSING_PETS_KEY, null)
-        return if (petsJson != null) {
-            val type = object : TypeToken<List<ReportedPet>>() {}.type
-            gson.fromJson(petsJson, type)
-        } else {
-            emptyList()
-        }
-    }
-
-    private fun getFoundPetsFromPrefs(): List<ReportedPet> {
-        val petsJson = sharedPreferences.getString(FOUND_PETS_KEY, null)
-        return if (petsJson != null) {
-            val type = object : TypeToken<List<ReportedPet>>() {}.type
-            gson.fromJson(petsJson, type)
-        } else {
-            emptyList()
-        }
-    }
-
-    private fun saveMissingPets(pets: List<ReportedPet>) {
-        sharedPreferences.edit {
-            putString(MISSING_PETS_KEY, gson.toJson(pets))
-        }
-    }
-
-    private fun saveFoundPets(pets: List<ReportedPet>) {
-        sharedPreferences.edit {
-            putString(FOUND_PETS_KEY, gson.toJson(pets))
-        }
-    }
-
-    companion object {
-        private const val REPORTED_PETS_PREFS = "reported_pets_prefs"
-        private const val MISSING_PETS_KEY = "missing_pets"
-        private const val FOUND_PETS_KEY = "found_pets"
-    }
 }

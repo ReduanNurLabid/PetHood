@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +55,7 @@ import com.example.pethood.MainActivity
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
 import com.example.pethood.data.ReportedPet
+import com.example.pethood.data.ReportedPetRepository
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.theme.PetHoodTheme
@@ -75,7 +77,7 @@ fun MissingPetReportScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
-    val reportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
+    val reportedPetRepository: ReportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
     val userRepository = PetHoodApplication.getInstance().userRepository
     // Get the selected image URI from the MainActivity
     val selectedImageUri = MainActivity.selectedImageUri.value
@@ -320,11 +322,12 @@ fun MissingPetReportScreen(
                             // Get current user ID
                             val currentUserId = userRepository.getCurrentUserId()
 
+
                             // Create the reported pet
                             val reportedPet = ReportedPet(
                                 name = petName,
                                 type = petType,
-                                lastSeen = lastSeen,
+                                lastSeen = lastSeen ,
                                 description = petDescription,
                                 contactNumber = contactNumber,
                                 reporterId = currentUserId, // Add the reporter's ID
@@ -332,8 +335,11 @@ fun MissingPetReportScreen(
                                 imageUrl = "dog_snoop", // Using placeholder image for now
                                 imageUri = selectedImageUri?.toString() ?: "" // Store the URI string
                             )
-
+                            
                             // Save the report
+
+
+
                             reportedPetRepository.reportPet(reportedPet)
 
                             Toast.makeText(

@@ -1,15 +1,13 @@
 package com.example.pethood.data
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
 
 enum class PetGender { MALE, FEMALE }
 
 enum class PetCategory { DOG, CAT, OTHER }
 
-@Entity(tableName = "pets")
+
 data class Pet(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val id: String = "",
     val name: String,
     val breed: String,
     val category: PetCategory,

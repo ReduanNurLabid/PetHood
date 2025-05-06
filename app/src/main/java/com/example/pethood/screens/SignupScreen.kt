@@ -3,6 +3,7 @@ package com.example.pethood.screens
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -44,7 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
 import com.example.pethood.data.User
-import com.example.pethood.ui.theme.PetHoodTheme
+import com.example.pethood.data.AuthService
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,7 +63,7 @@ fun SignupScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
-    val userRepository = PetHoodApplication.getInstance().userRepository
+    val authService = PetHoodApplication.getInstance().authService
 
     Box(
         modifier = Modifier
@@ -218,38 +219,33 @@ fun SignupScreen(
 
                         else -> {
                             isLoading = true
-                            errorMessage = null
+                            errorMessage = null                            
 
-                            // Create user and register
-                            val user = User(
-                                email = email, 
-                                password = password, 
-                                name = name,
-                                phoneNumber = phoneNumber
-                            )
-                            val isSuccessful = userRepository.registerUser(user)
+                            try{
+                                authService.signup(email,password,name,phoneNumber)
+                                    .addOnCompleteListener { task ->
+                                        if (task.isSuccessful) {
+                                            Toast.makeText(context, "Signup successful!", Toast.LENGTH_SHORT)
+                                                .show()
+                                            onSignupSuccess()
+                                        } else {
+                                            errorMessage = task.exception?.message ?: "Signup failed."
+                                        }
+                                    }
+                            } catch(e: Exception){
+                                errorMessage = e.message?: "Signup failed."
 
-                            if (isSuccessful) {
-                                // Save current user session
-                                userRepository.saveCurrentUser(user)
-                                Toast.makeText(context, "Signup successful!", Toast.LENGTH_SHORT)
-                                    .show()
-                                onSignupSuccess()
-                            } else {
-                                errorMessage = "Email already registered"
+
+                            }
+                            finally {
+                                isLoading = false
                             }
 
-                            isLoading = false
                         }
                     }
                 },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp),
-                shape = RoundedCornerShape(8.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary
-                )
+                    .fillMaxWidth().height(50.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors( containerColor = MaterialTheme.colorScheme.tertiary )
             ) {
                 if (isLoading) {
                     // Show loading indicator
@@ -314,17 +310,4 @@ private fun isValidPhoneNumber(phoneNumber: String): Boolean {
     // Simple validation: must be at least 10 digits and contain only digits, spaces, + and -
     val digitsOnly = phoneNumber.filter { it.isDigit() }
     return digitsOnly.length >= 10 && phoneNumber.all { it.isDigit() || it == ' ' || it == '+' || it == '-' }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SignupScreenPreview() {
-    PetHoodTheme {
-        SignupScreen(
-            onSignupClick = {},
-            onLoginClick = {},
-            onBackClick = {},
-            onSignupSuccess = {}
-        )
-    }
 }

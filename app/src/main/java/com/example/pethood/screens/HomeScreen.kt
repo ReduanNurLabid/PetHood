@@ -1,5 +1,6 @@
 package com.example.pethood.screens
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -32,13 +33,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -50,18 +56,23 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
-import com.example.pethood.data.AdoptionPet
 import com.example.pethood.data.Pet
 import com.example.pethood.data.PetCategory
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.components.CategorySelector
+import com.example.pethood.ui.components.PetCard
 import com.example.pethood.ui.components.SearchBar
+import kotlinx.coroutines.flow.Flow
 
+@SuppressLint("FlowOperatorInvokedInComposition")
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     navigateToRoute: (Screen) -> Unit = {},
+    petRepository: com.example.pethood.data.PetRepository = remember {
+        PetHoodApplication.getInstance().petRepository
+    },
     onPetClick: (Pet) -> Unit = {},
     onPutUpForAdoptionClick: () -> Unit = {},
     onAdoptionPetClick: (String) -> Unit = {}
@@ -69,37 +80,28 @@ fun HomeScreen(
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(PetCategory.DOG) }
-    
-    // Get adoption pets from repository
-    val adoptionPetRepository = remember { PetHoodApplication.getInstance().adoptionPetRepository }
-    val allAdoptionPets = remember { adoptionPetRepository.getAllAdoptionPets() }
-    
-    // Create filtered lists for each category
-    val dogPets = remember(allAdoptionPets, searchQuery) {
-        allAdoptionPets.filter { 
-            it.category.equals("Dog", ignoreCase = true) &&
-            (searchQuery.isEmpty() || 
-                it.name.contains(searchQuery, ignoreCase = true) || 
-                it.type.contains(searchQuery, ignoreCase = true))
+
+    //Get the pets from the repository
+    val allPets: List<Pet> by petRepository.getPets().observeAsState(listOf())
+
+    // Filter pets by category and search query
+    val filteredPets = remember(allPets, searchQuery, selectedCategory) {
+        allPets.filter { pet ->
+            val matchesCategory = when (selectedCategory) {
+                PetCategory.DOG -> pet.category.equals("Dog", ignoreCase = true)
+                PetCategory.CAT -> pet.category.equals("Cat", ignoreCase = true)
+                else -> pet.category.equals("Bird", ignoreCase = true) // Assuming other means Bird
+            }
+            val matchesSearchQuery = searchQuery.isEmpty() ||
+                    pet.name.contains(searchQuery, ignoreCase = true) ||
+                    pet.breed.contains(searchQuery, ignoreCase = true)
+            
+            matchesCategory && matchesSearchQuery
         }
     }
     
-    val catPets = remember(allAdoptionPets, searchQuery) {
-        allAdoptionPets.filter { 
-            it.category.equals("Cat", ignoreCase = true) &&
-            (searchQuery.isEmpty() || 
-                it.name.contains(searchQuery, ignoreCase = true) || 
-                it.type.contains(searchQuery, ignoreCase = true))
-        }
-    }
-    
-    val birdPets = remember(allAdoptionPets, searchQuery) {
-        allAdoptionPets.filter { 
-            it.category.equals("Bird", ignoreCase = true) &&
-            (searchQuery.isEmpty() || 
-                it.name.contains(searchQuery, ignoreCase = true) || 
-                it.type.contains(searchQuery, ignoreCase = true))
-        }
+    val pagerState = rememberPagerState(initialPage = 0) {
+        filteredPets.size
     }
     
     // Remember pager states for each category
@@ -107,6 +109,7 @@ fun HomeScreen(
     val catPagerState = rememberPagerState(initialPage = 0, pageCount = { catPets.size })
     val birdPagerState = rememberPagerState(initialPage = 0, pageCount = { birdPets.size })
 
+    val gradient = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color(0xFFE0E0E0).copy(alpha = 0.3f)), tileMode = TileMode.Clamp)
     Scaffold(
         bottomBar = {
             BottomNavigationBar(
@@ -119,6 +122,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .background(gradient)
         ) {
             Column(
                 modifier = Modifier
@@ -170,10 +174,10 @@ fun HomeScreen(
                 // Display pets for the selected category
                 when (selectedCategory) {
                     PetCategory.DOG -> {
-                        DisplayCategoryPets(
-                            pets = dogPets,
+                        DisplayPets(
+                            pets = filteredPets,
                             category = PetCategory.DOG,
-                            pagerState = dogPagerState,
+                            pagerState = pagerState,
                             onPetClick = { pet ->
                                 onAdoptionPetClick(pet.id)
                             },
@@ -202,10 +206,10 @@ fun HomeScreen(
                         )
                     }
                     PetCategory.CAT -> {
-                        DisplayCategoryPets(
-                            pets = catPets,
+                        DisplayPets(
+                            pets = filteredPets,
                             category = PetCategory.CAT,
-                            pagerState = catPagerState,
+                            pagerState = pagerState,
                             onPetClick = { pet ->
                                 onAdoptionPetClick(pet.id)
                             },
@@ -233,10 +237,10 @@ fun HomeScreen(
                             }
                         )
                     }
-                    else -> { // Birds/OTHER
-                        DisplayCategoryPets(
-                            pets = birdPets,
-                            category = PetCategory.OTHER,
+                    else -> {
+                        DisplayPets(
+                            pets = filteredPets,
+                            category = PetCategory.BIRD,
                             pagerState = birdPagerState,
                             onPetClick = { pet ->
                                 onAdoptionPetClick(pet.id)
@@ -273,16 +277,17 @@ fun HomeScreen(
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun DisplayCategoryPets(
-    pets: List<AdoptionPet>,
+fun DisplayPets(
+    pets: List<Pet>,
     category: PetCategory,
     pagerState: androidx.compose.foundation.pager.PagerState,
-    onPetClick: (AdoptionPet) -> Unit,
-    onContactClick: (AdoptionPet) -> Unit
+    onPetClick: (Pet) -> Unit,
+    onContactClick: (Pet) -> Unit
 ) {
     if (pets.isEmpty()) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -314,7 +319,7 @@ fun DisplayCategoryPets(
             modifier = Modifier.fillMaxSize()
         ) { page ->
             val pet = pets[page]
-            ReelsPetCard(
+            PetCard(
                 pet = pet,
                 category = category,
                 onCardClick = { onPetClick(pet) },
@@ -324,216 +329,12 @@ fun DisplayCategoryPets(
     }
 }
 
-@Composable
-fun ReelsPetCard(
-    pet: AdoptionPet,
-    category: PetCategory,
-    onCardClick: () -> Unit = {},
-    onContactClick: () -> Unit = {}
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(480.dp)
-            .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            // Pet image section - takes up 65% of the card
-            Box(
-                modifier = Modifier
-                    .weight(0.65f)
-                    .fillMaxWidth()
-            ) {
-                if (pet.imageUri.isNotEmpty()) {
-                    val uri = try {
-                        Uri.parse(pet.imageUri)
-                    } catch (e: Exception) {
-                        android.util.Log.e("HomeScreen", "Failed to parse URI: ${e.message}", e)
-                        null
-                    }
-
-                    if (uri != null) {
-                        Image(
-                            painter = rememberAsyncImagePainter(
-                                model = uri,
-                                onError = {
-                                    android.util.Log.e(
-                                        "HomeScreen",
-                                        "Error loading image: ${it.result.throwable.message}"
-                                    )
-                                }
-                            ),
-                            contentDescription = pet.name,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                    } else {
-                        // Fallback to a default image
-                        Image(
-                            painter = painterResource(id = R.drawable.pet_logo),
-                            contentDescription = pet.name,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(8.dp)),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
-                } else {
-                    // Display a default image based on the pet category
-                    val imageRes = when (category) {
-                        PetCategory.DOG -> R.drawable.dog_nemo
-                        PetCategory.CAT -> R.drawable.cat_nero
-                        else -> R.drawable.pet_logo
-                    }
-                    
-                    Image(
-                        painter = painterResource(id = imageRes),
-                        contentDescription = pet.name,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                }
-                
-                // Category badge
-                Box(
-                    modifier = Modifier
-                        .padding(12.dp)
-                        .background(
-                            color = when (category) {
-                                PetCategory.DOG -> Color(0xFFFF415B)
-                                PetCategory.CAT -> Color(0xFF6A1B9A)
-                                else -> Color(0xFF9C27B0) // Birds
-                            },
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                        .align(Alignment.TopEnd)
-                ) {
-                    Text(
-                        text = when (category) {
-                            PetCategory.DOG -> "Dog"
-                            PetCategory.CAT -> "Cat"
-                            else -> "Bird"
-                        },
-                        color = Color.White,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            
-            // Pet info section - 35% of card
-            Column(
-                modifier = Modifier
-                    .weight(0.35f)
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween
-            ) {
-                // Pet info area
-                Column {
-                    // Pet name
-                    Text(
-                        text = pet.name,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    // Pet breed/type
-                    Text(
-                        text = pet.type,
-                        fontSize = 18.sp,
-                        color = Color.Gray,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    
-                    Spacer(modifier = Modifier.height(4.dp))
-                    
-                    // Location with icon
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_location),
-                            contentDescription = "Location",
-                            modifier = Modifier.size(16.dp),
-                            tint = Color.Gray
-                        )
-                        
-                        Spacer(modifier = Modifier.width(4.dp))
-                        
-                        Text(
-                            text = pet.location,
-                            fontSize = 16.sp,
-                            color = Color.Gray,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Description - show if there is content
-                    if (pet.description.isNotEmpty()) {
-                        Text(
-                            text = pet.description,
-                            fontSize = 16.sp,
-                            color = Color.DarkGray,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-                
-                // Contact Button - ensuring it's always at the bottom and matches screenshot
-                androidx.compose.foundation.layout.Column {
-                    // Red contact button with proper styling - use an additional clickable modifier to stop propagation
-                    androidx.compose.foundation.layout.Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color(0xFFFF2F55))
-                            .clickable(
-                                indication = rememberRipple(),
-                                interactionSource = remember { MutableInteractionSource() },
-                                onClick = {
-                                    // Stop event propagation to parent card
-                                    onContactClick()
-                                }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Contact",
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
 
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     MaterialTheme {
         HomeScreen()
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.example.pethood.screens
 
+import android.content.Intent
+import android.net.Uri
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -38,6 +40,8 @@ import androidx.compose.ui.unit.sp
 import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
+import com.example.pethood.data.AdoptionPet
+import com.example.pethood.data.AdoptionPetRepository
 import com.example.pethood.data.PetCategory
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
@@ -49,11 +53,23 @@ fun AdoptionPetDetailScreen(
     onBackClick: () -> Unit,
     navigateToRoute: (Screen) -> Unit = {}
 ) {
+    // Get context and adoption pet repository
     val context = LocalContext.current
-    
-    // Get the adoption pet repository and find the pet by id
-    val adoptionPetRepository = PetHoodApplication.getInstance().adoptionPetRepository
-    val pet = adoptionPetRepository.getAdoptionPetById(petId)
+    val adoptionPetRepository: AdoptionPetRepository = PetHoodApplication.getInstance().adoptionPetRepository
+
+    // State to hold the pet
+    var pet: AdoptionPet? = null
+
+    // Retrieve the pet asynchronously
+    adoptionPetRepository.getAdoptionPet(petId){
+        petResult ->
+        if(petResult != null){
+            pet = petResult
+        } else{
+            Toast.makeText(context,"Pet not found",Toast.LENGTH_SHORT).show()
+        }
+    }
+
     
     // If pet is null, show error and return
     if (pet == null) {
@@ -72,7 +88,7 @@ fun AdoptionPetDetailScreen(
     
     // Determine pet category
     val category = when (pet.category.lowercase()) {
-        "dog" -> PetCategory.DOG
+        "dog" -> PetCategory.DOG.toString()
         "cat" -> PetCategory.CAT
         else -> PetCategory.OTHER
     }
@@ -85,12 +101,9 @@ fun AdoptionPetDetailScreen(
     }
     
     Scaffold(
-        bottomBar = {
-            BottomNavigationBar(
-                currentRoute = Screen.Home.route,
-                onNavigate = navigateToRoute
-            )
-        }
+            bottomBar = {
+                BottomNavigationBar(currentRoute = Screen.Home.route, onNavigate = navigateToRoute)
+            }
     ) { paddingValues ->
         Column(
             modifier = Modifier
@@ -105,15 +118,13 @@ fun AdoptionPetDetailScreen(
                     val uri = try {
                         Uri.parse(pet.imageUri)
                     } catch (e: Exception) {
-                        android.util.Log.e(
-                            "AdoptionPetDetailScreen",
-                            "Failed to parse URI: ${e.message}",
-                            e
-                        )
+                        android.util.Log.e("AdoptionPetDetailScreen", "Failed to parse URI: ${e.message}", e)
                         null
                     }
 
                     if (uri != null) {
+
+
                         Image(
                             painter = rememberAsyncImagePainter(
                                 model = uri,
@@ -121,7 +132,7 @@ fun AdoptionPetDetailScreen(
                                     android.util.Log.e(
                                         "AdoptionPetDetailScreen",
                                         "Error loading image: ${it.result.throwable.message}"
-                                    )
+                                                                       )
                                 }
                             ),
                             contentDescription = pet.name,
@@ -266,7 +277,7 @@ fun AdoptionPetDetailScreen(
                 Button(
                     onClick = {
                         if (pet.contactNumber.isNotEmpty()) {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
+                            val intent = Intent(Intent.ACTION_DIAL).apply {
                                 data = android.net.Uri.parse("tel:${pet.contactNumber}")
                             }
                             try {

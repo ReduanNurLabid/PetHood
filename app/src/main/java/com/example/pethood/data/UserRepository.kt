@@ -1,175 +1,105 @@
 package com.example.pethood.data
 
-import android.content.Context
-import android.content.SharedPreferences
-import androidx.core.content.edit
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.toObject
+import kotlinx.coroutines.tasks.await
 
 /**
- * Repository for handling user authentication and storage
+ * Repository for handling user data using Firestore.
  */
-class UserRepository(context: Context) {
-    
-    private val sharedPreferences: SharedPreferences =
-        context.getSharedPreferences(USER_PREFS, Context.MODE_PRIVATE)
-    private val gson = Gson()
-    
+class UserRepository {
+    private val firestore = FirebaseFirestore.getInstance()
+    private val usersCollection = firestore.collection("users")
+
     /**
-     * Registers a new user
-     * @return true if registration was successful, false if email already exists
+     * Retrieves a user by their ID.
+     * @param userId The ID of the user to retrieve.
+     * @return The User object if found, null otherwise.
      */
-    fun registerUser(user: User): Boolean {
-        val users = getUsers()
-        
-        // Check if user with this email already exists
-        if (users.any { it.email.equals(user.email, ignoreCase = true) }) {
-            return false
-        }
-        
-        // Add new user and save
-        val updatedUsers = users + user
-        saveUsers(updatedUsers)
-        
-        return true
-    }
-    
-    /**
-     * Logs in a user
-     * @return the User if credentials are valid, null otherwise
-     */
-    fun loginUser(email: String, password: String): User? {
-        val users = getUsers()
-        return users.find { 
-            it.email.equals(email, ignoreCase = true) && it.password == password 
-        }
-    }
-    
-    /**
-     * Save the current user session
-     */
-    fun saveCurrentUser(user: User) {
-        sharedPreferences.edit {
-            putString(CURRENT_USER_KEY, gson.toJson(user))
-        }
-    }
-    
-    /**
-     * Get the current logged in user
-     */
-    fun getCurrentUser(): User? {
-        val userJson = sharedPreferences.getString(CURRENT_USER_KEY, null)
-        return if (userJson != null) {
-            gson.fromJson(userJson, User::class.java)
-        } else null
-    }
-    
-    /**
-     * Update the current user's profile image URL
-     * @return true if update was successful
-     */
-    fun updateProfileImageUrl(imageUrl: String): Boolean {
-        val currentUser = getCurrentUser() ?: return false
-        
-        // Create updated user with new image URL
-        val updatedUser = currentUser.copy(profileImageUrl = imageUrl)
-        
-        // Update the user in the users list
-        val users = getUsers()
-        val updatedUsers = users.map { 
-            if (it.id == currentUser.id) updatedUser else it 
-        }
-        
-        // Save changes
-        saveUsers(updatedUsers)
-        saveCurrentUser(updatedUser)
-        
-        return true
-    }
-    
-    /**
-     * Update the current user's password
-     * @return true if update was successful
-     */
-    fun updatePassword(currentPassword: String, newPassword: String): Boolean {
-        val currentUser = getCurrentUser() ?: return false
-        
-        // Verify current password
-        if (currentUser.password != currentPassword) {
-            return false
-        }
-        
-        // Create updated user with new password
-        val updatedUser = currentUser.copy(password = newPassword)
-        
-        // Update the user in the users list
-        val users = getUsers()
-        val updatedUsers = users.map { 
-            if (it.id == currentUser.id) updatedUser else it 
-        }
-        
-        // Save changes
-        saveUsers(updatedUsers)
-        saveCurrentUser(updatedUser)
-        
-        return true
-    }
-    
-    /**
-     * Clear the current user session (logout)
-     */
-    fun logout() {
-        sharedPreferences.edit {
-            remove(CURRENT_USER_KEY)
-        }
-    }
-    
-    /**
-     * Check if a user is logged in
-     */
-    fun isLoggedIn(): Boolean {
-        val userId = sharedPreferences.getString(CURRENT_USER_KEY, null)
-        return userId != null
-    }
-    
-    /**
-     * Get the current user's ID
-     */
-    fun getCurrentUserId(): String {
-        val userJson = sharedPreferences.getString(CURRENT_USER_KEY, null)
-        return if (userJson != null) {
-            try {
-                val user = gson.fromJson(userJson, User::class.java)
-                user?.id ?: "default_user"
-            } catch (e: Exception) {
-                "default_user"
+    suspend fun getUser(userId: String): User? {
+        return try {
+            val document = usersCollection.document(userId).get().await()
+            if (document.exists()) {
+                document.toObject<User>()
+            } else {
+                null
             }
-        } else {
-            "default_user"
+        } catch (e: Exception) {
+            // Handle exceptions (e.g., network issues)
+            e.printStackTrace()
+            null
         }
     }
-    
-    // Private helper methods
-    
-    private fun getUsers(): List<User> {
-        val usersJson = sharedPreferences.getString(USERS_KEY, null)
-        return if (usersJson != null) {
-            val type = object : TypeToken<List<User>>() {}.type
-            gson.fromJson(usersJson, type)
-        } else {
-            emptyList()
+
+    /**
+     * Adds a new user to Firestore.
+     * @param user The User object to add.
+     * @return true if successful, false otherwise.
+     */
+    suspend fun addUser(user: User): Boolean {
+        return try {
+            // Let Firestore auto-generate the document ID
+            val documentReference = usersCollection.document()
+            // Set the generated ID to the user object
+            val userWithId = user.copy(id = documentReference.id)
+            // Set the data using the reference.
+            documentReference.set(userWithId).await()
+            true
+        } catch (e: Exception) {
+            // Handle exceptions
+            e.printStackTrace()
+            false
         }
     }
-    
-    private fun saveUsers(users: List<User>) {
-        sharedPreferences.edit {
-            putString(USERS_KEY, gson.toJson(users))
+
+    /**
+     * Updates an existing user in Firestore.
+     * @param user The updated User object.
+     * @return true if successful, false otherwise.
+     */
+    suspend fun updateUser(user: User): Boolean {
+        return try {
+            usersCollection.document(user.id).set(user).await()
+            true
+        } catch (e: Exception) {
+            // Handle exceptions
+            e.printStackTrace()
+            false
         }
     }
-    
-    companion object {
-        private const val USER_PREFS = "user_prefs"
-        private const val USERS_KEY = "users"
-        private const val CURRENT_USER_KEY = "current_user"
+
+    /**
+     * Deletes a user from Firestore.
+     * @param userId The ID of the user to delete.
+     * @return true if successful, false otherwise.
+     */
+    suspend fun deleteUser(userId: String): Boolean {
+        return try {
+            usersCollection.document(userId).delete().await()
+            true
+        } catch (e: Exception) {
+            // Handle exceptions
+            e.printStackTrace()
+            false
+        }
+    }    
+    /**
+    * Retrieves a user by their email
+    * @param userEmail The email of the user to retrieve.
+    * @return The User object if found, null otherwise.
+    */
+    suspend fun getUserByEmail(userEmail: String): User? {
+        return try {
+            val querySnapshot = usersCollection.whereEqualTo("email", userEmail).get().await()
+            if (!querySnapshot.isEmpty) {
+                querySnapshot.documents[0].toObject<User>()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            // Handle exceptions (e.g., network issues)
+            e.printStackTrace()
+            null
+        }
     }
 }
