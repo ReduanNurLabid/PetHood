@@ -1,23 +1,25 @@
 package com.example.pethood.screens
 
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,6 +50,7 @@ import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.theme.PrimaryRed
 
+@SuppressLint("FlowOperatorInvokedInComposition")
 @Composable
 fun ReportsScreen(
     onBackClick: () -> Unit = {},
@@ -56,6 +59,7 @@ fun ReportsScreen(
     onReportFoundPetClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
+
     var showAbandonedAnimalDialog by remember { mutableStateOf(false) }
     var showAnimalAbuseDialog by remember { mutableStateOf(false) }
 
@@ -141,7 +145,7 @@ fun ReportsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
+                .imePadding()
                 .padding(16.dp)
         ) {
             // Header with back button and title
@@ -193,20 +197,36 @@ fun ReportsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            ReportCard(
-                title = "abandoned animal",
-                imageRes = R.drawable.abandoned_animal,
-                onReportClick = { showAbandonedAnimalDialog = true }
-            )
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Replace with emergency reporting cards
+                item {
+                    ReportCard(
+                        title = "Report Abandoned Animal",
+                        imageRes = R.drawable.abandoned_animal,
+                        onReportClick = { showAbandonedAnimalDialog = true }
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                item {
+                    ReportCard(
+                        title = "Report Animal Abuse",
+                        imageRes = R.drawable.animal_abuse,
+                        onReportClick = { showAnimalAbuseDialog = true }
+                    )
+                }
 
-            ReportCard(
-                title = "animal abuse",
-                imageRes = R.drawable.animal_abuse,
-                onReportClick = { showAnimalAbuseDialog = true }
-            )
-
+                // Placeholder for any other emergency reporting options
+                item {
+                    ReportCard(
+                        title = "Animal Emergency",
+                        imageRes = R.drawable.ic_phone,
+                        onReportClick = { showAbandonedAnimalDialog = true }
+                    )
+                }
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             Button(
@@ -324,6 +344,9 @@ fun ReportCard(
 @Composable
 fun ReportsScreenPreview() {
     MaterialTheme {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val reportedPetRepository =
+            (context.applicationContext as com.example.pethood.PetHoodApplication).reportedPetRepository
         ReportsScreen(
             onReportMissingPetClick = {},
             onReportFoundPetClick = {}

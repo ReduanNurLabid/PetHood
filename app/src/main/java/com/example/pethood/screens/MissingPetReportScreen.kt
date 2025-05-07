@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -48,16 +49,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.text.KeyboardOptions
 import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.MainActivity
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
 import com.example.pethood.data.ReportedPet
+import com.example.pethood.data.ReportedPetRepository
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.theme.PetHoodTheme
 import com.example.pethood.ui.theme.PrimaryRed
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +79,7 @@ fun MissingPetReportScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
-    val reportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
+    val reportedPetRepository: ReportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
     val userRepository = PetHoodApplication.getInstance().userRepository
     // Get the selected image URI from the MainActivity
     val selectedImageUri = MainActivity.selectedImageUri.value
@@ -236,7 +240,7 @@ fun MissingPetReportScreen(
                         shape = RoundedCornerShape(24.dp)
                     )
                     .clip(RoundedCornerShape(24.dp))
-                    .clickable { 
+                    .clickable {
                         // Launch the image picker when the box is clicked
                         try {
                             (context as? MainActivity)?.pickImage()
@@ -320,21 +324,24 @@ fun MissingPetReportScreen(
                             // Get current user ID
                             val currentUserId = userRepository.getCurrentUserId()
 
+
                             // Create the reported pet
                             val reportedPet = ReportedPet(
                                 name = petName,
                                 type = petType,
-                                lastSeen = lastSeen,
+                                lastSeen = lastSeen ,
                                 description = petDescription,
                                 contactNumber = contactNumber,
-                                reporterId = currentUserId, // Add the reporter's ID
+                                userId = currentUserId, // Add the reporter's ID
                                 isMissing = true, // This is a missing pet report
                                 imageUrl = "dog_snoop", // Using placeholder image for now
                                 imageUri = selectedImageUri?.toString() ?: "" // Store the URI string
                             )
-
+                            
                             // Save the report
-                            reportedPetRepository.reportPet(reportedPet)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                reportedPetRepository.addReportedPet(reportedPet)
+                            }
 
                             Toast.makeText(
                                 context,

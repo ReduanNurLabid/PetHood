@@ -6,8 +6,14 @@ import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.core.content.edit
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.tasks.await
 import java.util.Date
 
 /**
@@ -20,6 +26,10 @@ class AdoptionPetRepository(context: Context) {
     private val sharedPreferences: SharedPreferences =
         context.getSharedPreferences(ADOPTION_PETS_PREFS, Context.MODE_PRIVATE)
     private val gson = Gson()
+    
+    // Firestore database reference
+    private val firestore: FirebaseFirestore = Firebase.firestore
+    private val petsCollection = firestore.collection("adoptionPets")
 
     // Sample data initialization for demo purposes
     init {
@@ -30,69 +40,223 @@ class AdoptionPetRepository(context: Context) {
     /**
      * Add a new pet for adoption
      */
-    fun addAdoptionPet(pet: AdoptionPet) {
+    suspend fun addAdoptionPet(pet: AdoptionPet): Flow<Result<Unit>> = flow {
         try {
-            // Validate the pet object before adding
-            if (pet.id.isBlank()) {
-                Log.e("AdoptionPetRepository", "Error: Pet ID is blank")
-                return
+            // Create a new document reference to get a unique ID
+            val documentRef = petsCollection.document()
+            val newDocId = documentRef.id
+            Log.d("AdoptionPetRepository", "Generated new document ID: $newDocId")
+
+            // Create a pet with the new document ID
+            val petWithNewId = pet.copy(id = newDocId)
+
+            try {
+                // Add pet to Firestore using the generated document ID
+                documentRef.set(petWithNewId).await()
+                Log.d("AdoptionPetRepository", "Successfully added pet to Firestore: ${pet.name}")
+
+                // Add to local cache
+                adoptionPets.add(petWithNewId)
+                emit(Result.success(Unit))
+            } catch (e: Exception) {
+                Log.e("AdoptionPetRepository", "Error adding pet to Firestore: ${e.message}", e)
+                emit(Result.failure(e))
             }
-            
-            // Check if this pet ID already exists (avoid duplicates)
-            if (adoptionPets.any { it.id == pet.id }) {
-                Log.w("AdoptionPetRepository", "Warning: Pet with ID ${pet.id} already exists, not adding duplicate")
-                return
-            }
-            
-            Log.d("AdoptionPetRepository", "Adding pet: ${pet.name}, ID: ${pet.id}, Category: ${pet.category}")
-            adoptionPets.add(pet)
-            // Save to SharedPreferences
-            savePets()
-            Log.d("AdoptionPetRepository", "Successfully added pet, total pets: ${adoptionPets.size}")
         } catch (e: Exception) {
             Log.e("AdoptionPetRepository", "Error adding pet: ${e.message}", e)
-            throw e // Rethrow to allow proper error handling upstream
+            emit(Result.failure(e))
         }
     }
     
     /**
      * Get all pets available for adoption
      */
-    fun getAllAdoptionPets(): List<AdoptionPet> {
-        return adoptionPets.toList()
+    suspend fun getAllAdoptionPets(): Flow<Result<List<AdoptionPet>>> = flow {
+        try {
+            Log.d("AdoptionPetRepository", "Fetching all adoption pets from Firestore...")
+            val snapshot = petsCollection.get().await()
+
+            Log.d(
+                "AdoptionPetRepository",
+                "Found ${snapshot.size()} documents in adoptionPets collection"
+            )
+
+            val petsList = mutableListOf<AdoptionPet>()
+            for (document in snapshot.documents) {
+                try {
+                    val pet = document.toObject(AdoptionPet::class.java)
+                    if (pet != null) {
+                        Log.d("AdoptionPetRepository", "Loaded pet: ${pet.name} (ID: ${pet.id})")
+                        petsList.add(pet)
+                    } else {
+                        Log.w(
+                            "AdoptionPetRepository",
+                            "Failed to convert document ${document.id} to AdoptionPet"
+                        )
+                        // Try to manually create pet from document data
+                        val data = document.data
+                        if (data != null) {
+                            try {
+                                val manualPet = AdoptionPet(
+                                    id = document.id,
+                                    name = data["name"] as? String ?: "Unknown",
+                                    category = data["category"] as? String ?: "Unknown",
+                                    type = data["type"] as? String ?: "Unknown",
+                                    location = data["location"] as? String ?: "",
+                                    description = data["description"] as? String ?: "",
+                                    contactNumber = data["contactNumber"] as? String ?: "",
+                                    imageUri = data["imageUri"] as? String ?: "",
+                                    userId = data["userId"] as? String ?: "",
+                                    date = (data["date"] as? com.google.firebase.Timestamp)?.toDate()
+                                        ?: Date()
+                                )
+                                Log.d(
+                                    "AdoptionPetRepository",
+                                    "Manually created pet: ${manualPet.name}"
+                                )
+                                petsList.add(manualPet)
+                            } catch (e: Exception) {
+                                Log.e(
+                                    "AdoptionPetRepository",
+                                    "Error creating pet manually: ${e.message}",
+                                    e
+                                )
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(
+                        "AdoptionPetRepository",
+                        "Error converting document ${document.id}: ${e.message}",
+                        e
+                    )
+                }
+            }
+
+            // Update local cache
+            adoptionPets.clear()
+            adoptionPets.addAll(petsList)
+
+            Log.d("AdoptionPetRepository", "Successfully loaded ${petsList.size} pets")
+            emit(Result.success(petsList))
+        } catch (e: Exception) {
+            Log.e("AdoptionPetRepository", "Error getting adoption pets: ${e.message}", e)
+
+            // Try direct access as a fallback
+            try {
+                Log.d("AdoptionPetRepository", "Attempting direct collection access...")
+                val directSnapshot = Firebase.firestore.collection("adoptionPets").get().await()
+                Log.d(
+                    "AdoptionPetRepository",
+                    "Direct access found ${directSnapshot.size()} documents"
+                )
+            } catch (e2: Exception) {
+                Log.e("AdoptionPetRepository", "Direct access also failed: ${e2.message}", e2)
+            }
+
+            // Fall back to local cache if available
+            if (adoptionPets.isNotEmpty()) {
+                Log.d("AdoptionPetRepository", "Falling back to ${adoptionPets.size} cached pets")
+                emit(Result.success(adoptionPets.toList()))
+            } else {
+                Log.e("AdoptionPetRepository", "No cached pets available, returning failure")
+                emit(Result.failure(e))
+            }
+        }
     }
     
     /**
      * Get pets available for adoption by category
      */
-    fun getAdoptionPetsByCategory(category: String): List<AdoptionPet> {
-        return adoptionPets.filter { it.category.equals(category, ignoreCase = true) }
+    suspend fun getAdoptionPetsByCategory(category: String): Flow<Result<List<AdoptionPet>>> = flow {
+        try {
+            val snapshot = petsCollection.whereEqualTo("category", category).get().await()
+            val petsList = mutableListOf<AdoptionPet>()
+            for (document in snapshot.documents) {
+                document.toObject(AdoptionPet::class.java)?.let { pet ->
+                    petsList.add(pet)
+                }
+            }
+            emit(Result.success(petsList))
+        } catch (e: Exception) {
+            Log.e("AdoptionPetRepository", "Error getting pets by category: ${e.message}", e)
+            // Fall back to local filtering
+            val filteredPets = adoptionPets.filter {
+                it.category.equals(category, ignoreCase = true)
+            }
+            emit(Result.success(filteredPets))
+        }
     }
     
     /**
      * Get adoption pets added by a specific user
      */
-    fun getAdoptionPetsByUser(userId: String): List<AdoptionPet> {
-        return adoptionPets.filter { it.userId == userId }
+    suspend fun getAdoptionPetsByUser(userId: String): Flow<Result<List<AdoptionPet>>> = flow {
+        try {
+            val snapshot = petsCollection.whereEqualTo("userId", userId).get().await()
+            val petsList = mutableListOf<AdoptionPet>()
+            for (document in snapshot.documents) {
+                document.toObject(AdoptionPet::class.java)?.let { pet ->
+                    petsList.add(pet)
+                }
+            }
+            emit(Result.success(petsList))
+        } catch (e: Exception) {
+            Log.e("AdoptionPetRepository", "Error getting pets by user: ${e.message}", e)
+            // Fall back to local filtering
+            val filteredPets = adoptionPets.filter { it.userId == userId }
+            emit(Result.success(filteredPets))
+        }
     }
     
     /**
      * Remove an adoption pet by ID
      */
-    fun removeAdoptionPet(petId: String) {
-        val petToRemove = adoptionPets.find { it.id == petId }
-        petToRemove?.let {
-            adoptionPets.remove(it)
-            // Save changes to SharedPreferences
-            savePets()
+    suspend fun removeAdoptionPet(petId: String): Flow<Result<Unit>> = flow {
+        try {
+            petsCollection.document(petId).delete().await()
+            // Remove from local cache
+            val petToRemove = adoptionPets.find { it.id == petId }
+            petToRemove?.let {
+                adoptionPets.remove(it)
+            }
+            emit(Result.success(Unit))
+        } catch (e: Exception) {
+            Log.e("AdoptionPetRepository", "Error removing pet: ${e.message}", e)
+            emit(Result.failure(e))
         }
     }
     
     /**
      * Get a specific adoption pet by its ID
      */
-    fun getAdoptionPetById(id: String): AdoptionPet? {
-        return adoptionPets.find { it.id == id }
+    suspend fun getAdoptionPetById(id: String): Flow<Result<AdoptionPet>> = flow {
+        // First check local cache
+        val localPet = adoptionPets.find { it.id == id }
+        if (localPet != null) {
+            emit(Result.success(localPet))
+            return@flow
+        }
+
+        try {
+            // If not found locally, try to fetch from Firestore
+            val document = petsCollection.document(id).get().await()
+            if (document.exists()) {
+                val pet = document.toObject(AdoptionPet::class.java)
+                // Add to local cache if found
+                pet?.let {
+                    if (!adoptionPets.contains(it)) {
+                        adoptionPets.add(it)
+                    }
+                    emit(Result.success(it))
+                } ?: emit(Result.failure(Exception("Pet data could not be parsed")))
+            } else {
+                emit(Result.failure(Exception("Pet not found")))
+            }
+        } catch (e: Exception) {
+            Log.e("AdoptionPetRepository", "Error getting pet by ID: ${e.message}", e)
+            emit(Result.failure(e))
+        }
     }
     
     /**

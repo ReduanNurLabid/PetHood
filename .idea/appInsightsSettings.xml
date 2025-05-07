@@ -10,16 +10,10 @@
               <option name="connection">
                 <ConnectionSetting>
                   <option name="appId" value="com.example.pethood" />
-                  <option name="mobileSdkAppId" value="1:275767121515:android:ff7f39eeb489c52d80432e" />
-                  <option name="projectId" value="pethood-3cfac" />
-                  <option name="projectNumber" value="275767121515" />
+                  <option name="mobileSdkAppId" value="1:1060732297708:android:70967cd0ecaac94044a0c9" />
+                  <option name="projectId" value="device-streaming-00979e73" />
+                  <option name="projectNumber" value="1060732297708" />
                 </ConnectionSetting>
-              </option>
-              <option name="failureTypes">
-                <list>
-                  <option value="FATAL" />
-                  <option value="ANR" />
-                </list>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
               <option name="timeIntervalDays" value="THIRTY_DAYS" />

@@ -1,6 +1,7 @@
 package com.example.pethood.screens
 
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -26,6 +27,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,11 +56,34 @@ fun AdoptionPetDetailScreen(
     navigateToRoute: (Screen) -> Unit = {}
 ) {
     val context = LocalContext.current
-    
-    // Get the adoption pet repository and find the pet by id
+
+    var pet by remember { mutableStateOf<com.example.pethood.data.AdoptionPet?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+
     val adoptionPetRepository = PetHoodApplication.getInstance().adoptionPetRepository
-    val pet = adoptionPetRepository.getAdoptionPetById(petId)
-    
+
+    LaunchedEffect(petId) {
+        adoptionPetRepository.getAdoptionPetById(petId).collect { result ->
+            result.onSuccess { adoptionPet ->
+                pet = adoptionPet
+            }.onFailure {
+                // Optionally handle error
+            }
+            isLoading = false
+        }
+    }
+
+    // If loading, show loading indicator
+    if (isLoading) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.material3.CircularProgressIndicator()
+        }
+        return
+    }
+
     // If pet is null, show error and return
     if (pet == null) {
         Box(
@@ -71,7 +100,7 @@ fun AdoptionPetDetailScreen(
     }
     
     // Determine pet category
-    val category = when (pet.category.lowercase()) {
+    val category = when (pet?.category?.lowercase()) {
         "dog" -> PetCategory.DOG
         "cat" -> PetCategory.CAT
         else -> PetCategory.OTHER
@@ -101,15 +130,15 @@ fun AdoptionPetDetailScreen(
             // Pet image with back button
             Box(modifier = Modifier.fillMaxWidth()) {
                 // Pet image
-                if (pet.imageUri.isNotEmpty()) {
+                if (!pet?.imageUri.isNullOrEmpty()) {
+                    // Try to load from URI string
+                    Log.d("AdoptionPetDetailScreen", "Loading image from URI: ${pet?.imageUri}")
+
+                    // Safely parse URI outside of composable
                     val uri = try {
-                        Uri.parse(pet.imageUri)
+                        Uri.parse(pet?.imageUri)
                     } catch (e: Exception) {
-                        android.util.Log.e(
-                            "AdoptionPetDetailScreen",
-                            "Failed to parse URI: ${e.message}",
-                            e
-                        )
+                        Log.e("AdoptionPetDetailScreen", "Error parsing URI: ${e.message}", e)
                         null
                     }
 
@@ -118,47 +147,27 @@ fun AdoptionPetDetailScreen(
                             painter = rememberAsyncImagePainter(
                                 model = uri,
                                 onError = {
-                                    android.util.Log.e(
+                                    Log.e(
                                         "AdoptionPetDetailScreen",
                                         "Error loading image: ${it.result.throwable.message}"
                                     )
                                 }
                             ),
-                            contentDescription = pet.name,
+                            contentDescription = pet?.name,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(300.dp),
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        // Fallback to a default image
-                        Image(
-                            painter = painterResource(id = R.drawable.pet_logo),
-                            contentDescription = pet.name,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(300.dp),
-                            contentScale = ContentScale.Crop
-                        )
+                        // Fallback to default image if URI parsing failed
+                        FallbackImage(category, pet?.name)
                     }
                 } else {
-                    // Display a default image based on the pet category
-                    val imageRes = when (category) {
-                        PetCategory.DOG -> R.drawable.dog_nemo
-                        PetCategory.CAT -> R.drawable.cat_nero
-                        else -> R.drawable.pet_logo
-                    }
-                    
-                    Image(
-                        painter = painterResource(id = imageRes),
-                        contentDescription = pet.name,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(300.dp),
-                        contentScale = ContentScale.Crop
-                    )
+                    // Use default image based on category
+                    FallbackImage(category, pet?.name)
                 }
-                
+
                 // Back button
                 IconButton(
                     onClick = onBackClick,
@@ -187,7 +196,7 @@ fun AdoptionPetDetailScreen(
                         .align(Alignment.TopEnd)
                 ) {
                     Text(
-                        text = pet.category,
+                        text = pet?.category ?: "",
                         color = Color.White,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
@@ -203,7 +212,7 @@ fun AdoptionPetDetailScreen(
             ) {
                 // Pet name in large text
                 Text(
-                    text = pet.name,
+                    text = pet?.name ?: "",
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.DarkGray
@@ -213,7 +222,7 @@ fun AdoptionPetDetailScreen(
                 
                 // Pet breed/type
                 Text(
-                    text = pet.type,
+                    text = pet?.type ?: "",
                     fontSize = 20.sp,
                     color = Color.Gray
                 )
@@ -234,7 +243,7 @@ fun AdoptionPetDetailScreen(
                     Spacer(modifier = Modifier.width(8.dp))
                     
                     Text(
-                        text = pet.location,
+                        text = pet?.location ?: "",
                         fontSize = 18.sp,
                         color = Color.Gray
                     )
@@ -254,7 +263,8 @@ fun AdoptionPetDetailScreen(
                 
                 // Full description
                 Text(
-                    text = pet.description.ifEmpty { "No description provided" },
+                    text = pet?.description?.ifEmpty { "No description provided" }
+                        ?: "No description provided",
                     fontSize = 16.sp,
                     color = Color.DarkGray,
                     lineHeight = 24.sp
@@ -265,9 +275,10 @@ fun AdoptionPetDetailScreen(
                 // Contact button
                 Button(
                     onClick = {
-                        if (pet.contactNumber.isNotEmpty()) {
+                        val contactNumber = pet?.contactNumber ?: ""
+                        if (contactNumber.isNotEmpty()) {
                             val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
-                                data = android.net.Uri.parse("tel:${pet.contactNumber}")
+                                data = android.net.Uri.parse("tel:$contactNumber")
                             }
                             try {
                                 context.startActivity(intent)
@@ -304,4 +315,22 @@ fun AdoptionPetDetailScreen(
             }
         }
     }
-} 
+}
+
+@Composable
+fun FallbackImage(category: PetCategory, contentDescription: String?) {
+    val imageRes = when (category) {
+        PetCategory.DOG -> R.drawable.dog_nemo
+        PetCategory.CAT -> R.drawable.cat_nero
+        else -> R.drawable.pet_logo
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = contentDescription,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(300.dp),
+        contentScale = ContentScale.Crop
+    )
+}

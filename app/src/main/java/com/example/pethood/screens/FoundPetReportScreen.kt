@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.text.KeyboardOptions
 import coil.compose.rememberAsyncImagePainter
+import kotlinx.coroutines.launch
 import com.example.pethood.MainActivity
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
@@ -79,6 +81,7 @@ fun FoundPetReportScreen(
     val userRepository = PetHoodApplication.getInstance().userRepository
     // Get the selected image URI from the MainActivity
     val selectedImageUri = MainActivity.selectedImageUri.value
+    val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
         bottomBar = {
@@ -314,39 +317,43 @@ fun FoundPetReportScreen(
                         }
 
                         else -> {
-                            isLoading = true
-                            errorMessage = null
+                           coroutineScope.launch {
+                               isLoading = true
+                               errorMessage = null
 
-                            // Get current user ID
-                            val currentUserId = userRepository.getCurrentUserId()
+                               // Get current user ID
+                               val currentUserId = userRepository.getCurrentUserId()
 
-                            // Create the reported pet
-                            val reportedPet = ReportedPet(
-                                name = petName,
-                                type = petType,
-                                lastSeen = lastSeen,
-                                description = petDetails,
-                                contactNumber = contactNumber,
-                                reporterId = currentUserId, // Add the reporter's ID
-                                isMissing = false, // This is a found pet report
-                                imageUrl = "cat_bunty", // Using placeholder image for now
-                                imageUri = selectedImageUri?.toString() ?: "" // Store the URI string
-                            )
+                               if(currentUserId != null){
+                                   // Create the reported pet
+                                   val reportedPet = ReportedPet(
+                                       name = petName,
+                                       type = petType,
+                                       lastSeen = lastSeen,
+                                       description = petDetails,
+                                       contactNumber = contactNumber,
+                                       userId = currentUserId, // Add the reporter's ID
+                                       isMissing = false, // This is a found pet report
+                                       imageUrl = "cat_bunty", // Using placeholder image for now
+                                       imageUri = selectedImageUri?.toString() ?: "" // Store the URI string
+                                   )
 
-                            // Save the report
-                            reportedPetRepository.reportPet(reportedPet)
+                                   // Save the report
+                                   reportedPetRepository.addReportedPet(reportedPet)
 
-                            Toast.makeText(
-                                context,
-                                "Found pet reported successfully!",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            onSubmitReport()
-                            
-                            // Reset the selected image
-                            MainActivity.selectedImageUri.value = null
+                                   Toast.makeText(
+                                       context,
+                                       "Found pet reported successfully!",
+                                       Toast.LENGTH_SHORT
+                                   ).show()
+                                   onSubmitReport()
 
-                            isLoading = false
+                                   // Reset the selected image
+                                   MainActivity.selectedImageUri.value = null
+                               }
+
+                               isLoading = false
+                           }
                         }
                     }
                 },

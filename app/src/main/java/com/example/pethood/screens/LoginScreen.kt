@@ -28,6 +28,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,6 +45,7 @@ import androidx.compose.ui.unit.sp
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
 import com.example.pethood.ui.theme.PetHoodTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +61,8 @@ fun LoginScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
-    val userRepository = PetHoodApplication.getInstance().userRepository
+    val authService = PetHoodApplication.getInstance().authService
+    val coroutineScope = rememberCoroutineScope()
 
     Box(
         modifier = Modifier
@@ -169,17 +172,20 @@ fun LoginScreen(
                         else -> {
                             isLoading = true
                             errorMessage = null
-
-                            val user = userRepository.loginUser(email, password)
-
-                            if (user != null) {
-                                userRepository.saveCurrentUser(user)
-                                Toast.makeText(context, "Login successful!", Toast.LENGTH_SHORT)
-                                    .show()
-                                onLoginSuccess()
-                            } else {
-                                errorMessage = "Invalid email or password"
-                                isLoading = false
+                            coroutineScope.launch {
+                                try {
+                                    authService.login(email, password)
+                                    Toast.makeText(
+                                        context,
+                                        "Login successful!",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    onLoginSuccess()
+                                } catch (e: Exception) {
+                                    errorMessage =
+                                        "Invalid email or password"
+                                    isLoading = false
+                                }
                             }
                         }
                     }

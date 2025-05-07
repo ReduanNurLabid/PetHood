@@ -1,5 +1,7 @@
 package com.example.pethood.screens
 
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +27,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,6 +42,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -51,14 +54,13 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.theme.PetHoodTheme
 import com.example.pethood.ui.theme.PrimaryRed
-import android.widget.Toast
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,16 +70,67 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val userRepository = PetHoodApplication.getInstance().userRepository
-    val currentUser = remember { userRepository.getCurrentUser() }
+    var currentUser by remember { mutableStateOf(userRepository.getCurrentUser()) }
+
+    // Refresh user data when the screen is displayed
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        currentUser = userRepository.getCurrentUser()
+    }
     
     // State variables for the dialogs
     var showImageUrlDialog by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
-    var imageUrl by remember { mutableStateOf(currentUser?.profileImageUrl ?: "") }
+    var showPhoneDialog by remember { mutableStateOf(false) }
+    var showNameDialog by remember { mutableStateOf(false) }
+    var imageUrl by remember { mutableStateOf("") }
+    var phoneNumber by remember { mutableStateOf("") }
+    var userName by remember { mutableStateOf("") }
     var currentPassword by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Focus requesters for the text fields
+    val imageUrlFocusRequester = remember { FocusRequester() }
+    val phoneNumberFocusRequester = remember { FocusRequester() }
+    val nameFocusRequester = remember { FocusRequester() }
+    val currentPasswordFocusRequester = remember { FocusRequester() }
+
+    // Update dialog values when opened
+    androidx.compose.runtime.LaunchedEffect(showImageUrlDialog, showPhoneDialog, showNameDialog) {
+        if (showImageUrlDialog) {
+            imageUrl = currentUser?.profileImageUrl ?: ""
+            // Request focus after a short delay to ensure dialog is fully shown
+            kotlinx.coroutines.delay(100)
+            try {
+                imageUrlFocusRequester.requestFocus()
+            } catch (e: Exception) {
+                Log.e("ProfileScreen", "Failed to request focus", e)
+            }
+        }
+        if (showPhoneDialog) {
+            phoneNumber = currentUser?.phoneNumber ?: ""
+            // Request focus after a short delay
+            kotlinx.coroutines.delay(100)
+            try {
+                phoneNumberFocusRequester.requestFocus()
+            } catch (e: Exception) {
+                Log.e("ProfileScreen", "Failed to request focus", e)
+            }
+        }
+        if (showNameDialog) {
+            userName = currentUser?.name ?: ""
+            // Request focus after a short delay
+            kotlinx.coroutines.delay(100)
+            try {
+                nameFocusRequester.requestFocus()
+            } catch (e: Exception) {
+                Log.e("ProfileScreen", "Failed to request focus", e)
+            }
+        }
+    }
+
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
     Scaffold(
         bottomBar = {
@@ -117,7 +170,7 @@ fun ProfileScreen(
                 if (currentUser?.profileImageUrl?.isNotEmpty() == true) {
                     // Load profile image from URL
                     Image(
-                        painter = rememberAsyncImagePainter(model = currentUser.profileImageUrl),
+                        painter = rememberAsyncImagePainter(model = currentUser?.profileImageUrl),
                         contentDescription = "Profile Image",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
@@ -172,7 +225,7 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = "User Information",
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.DarkGray
                     )
@@ -181,25 +234,53 @@ fun ProfileScreen(
 
                     if (currentUser != null) {
                         Text(
-                            text = "Name: ${currentUser.name}",
-                            fontSize = 16.sp,
-                            color = Color.DarkGray
+                            text = "Name",
+                            fontSize = 18.sp,
+                            color = Color.DarkGray,
+                            fontWeight = FontWeight.Bold,
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = currentUser?.name ?: "",
+                                color = Color.Gray,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { showNameDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Name",
+                                    tint = PrimaryRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Email: ${currentUser.email}",
-                            fontSize = 16.sp,
-                            color = Color.DarkGray
+                            text = "Email",
+                            fontSize = 18.sp,
+                            color = Color.DarkGray,
+                            fontWeight = FontWeight.Bold,
                         )
+                        Text(text = currentUser?.email ?: "", color = Color.Gray)
                         
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "Phone: ${currentUser.phoneNumber.ifEmpty { "Not provided" }}",
+                            text = "Phone",
+                            fontSize = 18.sp,
+                            color = Color.DarkGray,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = if (currentUser?.phoneNumber?.isBlank() == true) "Not provided" else currentUser?.phoneNumber
+                                ?: "Not provided",
                             fontSize = 16.sp,
-                            color = Color.DarkGray
+                            color = Color.Gray
                         )
                     } else {
                         Text(
@@ -227,13 +308,34 @@ fun ProfileScreen(
                 ) {
                     Text(
                         text = "Account Settings",
-                        fontSize = 18.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.DarkGray
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
+                    // Update Profile Name Button
+                    Button(
+                        onClick = { showNameDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF9C27B0)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Update Name",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
                     // Update Profile Image Button
                     Button(
                         onClick = { showImageUrlDialog = true },
@@ -273,6 +375,27 @@ fun ProfileScreen(
                             color = Color.White
                         )
                     }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Update Phone Number Button
+                    Button(
+                        onClick = { showPhoneDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF03A9F4)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Text(
+                            text = "Update Phone Number",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = Color.White
+                        )
+                    }
                 }
             }
 
@@ -307,102 +430,90 @@ fun ProfileScreen(
     
     // Profile Image URL Dialog
     if (showImageUrlDialog) {
-        Dialog(onDismissRequest = { showImageUrlDialog = false }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Update Profile Image",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    OutlinedTextField(
-                        value = imageUrl,
-                        onValueChange = { imageUrl = it },
-                        label = { Text("Image URL") },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions.Default.copy(
-                            imeAction = ImeAction.Done
-                        ),
-                        singleLine = true
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(
-                            onClick = { showImageUrlDialog = false }
-                        ) {
-                            Text("Cancel")
-                        }
-                        
-                        TextButton(
-                            onClick = {
-                                if (imageUrl.isNotEmpty()) {
-                                    val success = userRepository.updateProfileImageUrl(imageUrl)
-                                    if (success) {
-                                        Toast.makeText(context, "Profile image updated", Toast.LENGTH_SHORT).show()
-                                        showImageUrlDialog = false
-                                    } else {
-                                        Toast.makeText(context, "Failed to update profile image", Toast.LENGTH_SHORT).show()
-                                    }
+        AlertDialog(
+            onDismissRequest = { showImageUrlDialog = false },
+            title = {
+                Text(
+                    text = "Update Profile Image",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                OutlinedTextField(
+                    value = imageUrl,
+                    onValueChange = { imageUrl = it },
+                    label = { Text("Image URL") },
+                    placeholder = { Text("https://example.com/image.jpg") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(imageUrlFocusRequester),
+                    keyboardOptions = KeyboardOptions.Default.copy(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Done
+                    ),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (imageUrl.isNotEmpty()) {
+                            coroutineScope.launch {
+                                val success = userRepository.updateProfileImageUrl(imageUrl)
+                                if (success) {
+                                    Toast.makeText(
+                                        context,
+                                        "Profile image updated",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    showImageUrlDialog = false
+                                    currentUser = userRepository.getCurrentUser()
                                 } else {
-                                    Toast.makeText(context, "Please enter a valid URL", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Failed to update profile image",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
-                        ) {
-                            Text("Update")
+                        } else {
+                            Toast.makeText(context, "Please enter a valid URL", Toast.LENGTH_SHORT)
+                                .show()
                         }
                     }
+                ) {
+                    Text("Update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImageUrlDialog = false }) {
+                    Text("Cancel")
                 }
             }
-        }
+        )
     }
     
     // Change Password Dialog
     if (showPasswordDialog) {
-        Dialog(onDismissRequest = { showPasswordDialog = false }) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Change Password",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.DarkGray
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Current Password
+        AlertDialog(
+            onDismissRequest = { showPasswordDialog = false },
+            title = {
+                Text(
+                    text = "Change Password",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
                     OutlinedTextField(
                         value = currentPassword,
                         onValueChange = { currentPassword = it },
                         label = { Text("Current Password") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(currentPasswordFocusRequester),
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
@@ -413,7 +524,6 @@ fun ProfileScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    // New Password
                     OutlinedTextField(
                         value = newPassword,
                         onValueChange = { newPassword = it },
@@ -429,7 +539,6 @@ fun ProfileScreen(
                     
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    // Confirm New Password
                     OutlinedTextField(
                         value = confirmPassword,
                         onValueChange = { confirmPassword = it },
@@ -452,70 +561,211 @@ fun ProfileScreen(
                             fontSize = 14.sp
                         )
                     }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(
-                            onClick = { 
-                                showPasswordDialog = false
-                                // Reset fields and error message
-                                currentPassword = ""
-                                newPassword = ""
-                                confirmPassword = ""
-                                errorMessage = null
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when {
+                            currentPassword.isEmpty() -> {
+                                errorMessage = "Please enter your current password"
                             }
-                        ) {
-                            Text("Cancel")
-                        }
-                        
-                        TextButton(
-                            onClick = {
-                                when {
-                                    currentPassword.isEmpty() -> {
-                                        errorMessage = "Please enter your current password"
-                                    }
-                                    newPassword.isEmpty() -> {
-                                        errorMessage = "Please enter a new password"
-                                    }
-                                    newPassword.length < 6 -> {
-                                        errorMessage = "Password must be at least 6 characters"
-                                    }
-                                    newPassword != confirmPassword -> {
-                                        errorMessage = "Passwords do not match"
-                                    }
-                                    else -> {
-                                        val success = userRepository.updatePassword(currentPassword, newPassword)
-                                        if (success) {
-                                            Toast.makeText(context, "Password updated successfully", Toast.LENGTH_SHORT).show()
-                                            showPasswordDialog = false
-                                            // Reset fields and error message
-                                            currentPassword = ""
-                                            newPassword = ""
-                                            confirmPassword = ""
-                                            errorMessage = null
-                                        } else {
-                                            errorMessage = "Current password is incorrect"
-                                        }
+                            newPassword.isEmpty() -> {
+                                errorMessage = "Please enter a new password"
+                            }
+
+                            newPassword.length < 6 -> {
+                                errorMessage = "Password must be at least 6 characters"
+                            }
+
+                            newPassword != confirmPassword -> {
+                                errorMessage = "Passwords do not match"
+                            }
+
+                            else -> {
+                                coroutineScope.launch {
+                                    val success = userRepository.updatePassword(
+                                        currentPassword,
+                                        newPassword
+                                    )
+                                    if (success) {
+                                        Toast.makeText(
+                                            context,
+                                            "Password updated successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        showPasswordDialog = false
+                                        // Reset fields and error message
+                                        currentPassword = ""
+                                        newPassword = ""
+                                        confirmPassword = ""
+                                        errorMessage = null
+                                        currentUser = userRepository.getCurrentUser()
+                                    } else {
+                                        errorMessage = "Current password is incorrect"
                                     }
                                 }
                             }
-                        ) {
-                            Text("Update")
                         }
                     }
+                ) {
+                    Text("Update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showPasswordDialog = false
+                    // Reset fields and error message
+                    currentPassword = ""
+                    newPassword = ""
+                    confirmPassword = ""
+                    errorMessage = null
+                }) {
+                    Text("Cancel")
                 }
             }
-        }
+        )
+    }
+    
+    // Update Phone Number Dialog
+    if (showPhoneDialog) {
+        AlertDialog(
+            onDismissRequest = { showPhoneDialog = false },
+            title = {
+                Text(
+                    text = "Update Phone Number",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                OutlinedTextField(
+                    value = phoneNumber,
+                    onValueChange = { phoneNumber = it },
+                    label = { Text("Phone Number") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(phoneNumberFocusRequester),
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Phone,
+                        imeAction = ImeAction.Done
+                    ),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (phoneNumber.isNotEmpty()) {
+                            coroutineScope.launch {
+                                val success = userRepository.updatePhoneNumber(phoneNumber)
+                                if (success) {
+                                    Toast.makeText(
+                                        context,
+                                        "Phone number updated",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    showPhoneDialog = false
+                                    currentUser = userRepository.getCurrentUser()
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Failed to update phone number",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Please enter a valid phone number",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                ) {
+                    Text("Update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPhoneDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Update Name Dialog
+    if (showNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showNameDialog = false },
+            title = {
+                Text(
+                    text = "Update Name",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                OutlinedTextField(
+                    value = userName,
+                    onValueChange = { userName = it },
+                    label = { Text("Name") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(nameFocusRequester),
+                    keyboardOptions = KeyboardOptions(
+                        imeAction = ImeAction.Done
+                    ),
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (userName.isNotEmpty()) {
+                            coroutineScope.launch {
+                                val success = userRepository.updateName(userName)
+                                if (success) {
+                                    Toast.makeText(
+                                        context,
+                                        "Name updated",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    showNameDialog = false
+                                    currentUser = userRepository.getCurrentUser()
+                                } else {
+                                    Toast.makeText(
+                                        context,
+                                        "Failed to update name",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "Please enter a valid name",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                ) {
+                    Text("Update")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNameDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
-fun ProfileScreenPreview() {
+fun ProfileScreenPreview(){
     PetHoodTheme {
         ProfileScreen()
     }

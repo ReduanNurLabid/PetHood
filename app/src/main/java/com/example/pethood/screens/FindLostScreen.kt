@@ -28,7 +28,6 @@ import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,15 +71,40 @@ fun FindLostScreen(
     val context = LocalContext.current
     val reportedPetRepository = remember { PetHoodApplication.getInstance().reportedPetRepository }
 
-    // Collect missing and found pets as state
-    val missingPets = reportedPetRepository.missingPets.collectAsState().value
-    val foundPets = reportedPetRepository.foundPets.collectAsState().value
+    // Store pets in state
+    var missingPets by remember { mutableStateOf<List<ReportedPet>>(emptyList()) }
+    var foundPets by remember { mutableStateOf<List<ReportedPet>>(emptyList()) }
 
-    // Add sample data on first launch
-    LaunchedEffect(Unit) {
-        if (missingPets.isEmpty() && foundPets.isEmpty()) {
-            reportedPetRepository.addSampleData()
+    // Load data on launch and when refreshed
+    LaunchedEffect(refreshTrigger) {
+        try {
+            Log.d("FindLostScreen", "Fetching missing and found pets...")
+
+            // Get missing pets
+            val missingPetsList = reportedPetRepository.getAllMissingPets()
+            Log.d("FindLostScreen", "Loaded ${missingPetsList.size} missing pets")
+
+            // Get found pets
+            val foundPetsList = reportedPetRepository.getAllFoundPets()
+            Log.d("FindLostScreen", "Loaded ${foundPetsList.size} found pets")
+
+            // Update state with separate lists
+            missingPets = missingPetsList
+            foundPets = foundPetsList
+
+            Log.d(
+                "FindLostScreen",
+                "Total: ${missingPets.size} missing pets, ${foundPets.size} found pets"
+            )
+        } catch (e: Exception) {
+            Log.e("FindLostScreen", "Error loading pets: ${e.message}", e)
         }
+    }
+
+    // Refresh the screen when it becomes visible
+    LaunchedEffect(Unit) {
+        // Trigger a refresh of the data
+        refreshTrigger++
     }
 
     // Filter based on search query
@@ -115,13 +139,28 @@ fun FindLostScreen(
                 .padding(paddingValues)
         ) {
             // App title
-            Text(
-                text = "FindLost",
-                color = PrimaryRed,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Missing & Found Pets",
+                    color = PrimaryRed,
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                // Add log info for debugging in dev
+                Text(
+                    text = "(${missingPets.size}/${foundPets.size})",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(end = 16.dp)
+                )
+            }
 
             // Search bar
             SearchBar(
@@ -223,7 +262,7 @@ fun ReportedPetCard(
     val cardColor =
         if (pet.isMissing) PrimaryRed.copy(alpha = 0.1f) else Color(0xFF4CAF50).copy(alpha = 0.1f)
     val statusColor = if (pet.isMissing) PrimaryRed else Color(0xFF4CAF50)
-    val statusText = if (pet.isMissing) "Missing" else "Found"
+    val statusText = if (pet.isMissing) "Missing Pet" else "Found Pet"
 
     Card(
         modifier = modifier
