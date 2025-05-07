@@ -17,14 +17,10 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -38,8 +34,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,26 +47,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.pethood.R
 import com.example.pethood.navigation.Screen
-import com.example.pethood.data.ReportedPet
-import com.example.pethood.data.ReportedPetRepository
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.theme.PrimaryRed
-import kotlinx.coroutines.flow.collect
 
 @SuppressLint("FlowOperatorInvokedInComposition")
 @Composable
 fun ReportsScreen(
-    reportedPetRepository: ReportedPetRepository,
     onBackClick: () -> Unit = {},
     navigateToRoute: (Screen) -> Unit = {},
     onReportMissingPetClick: () -> Unit = {},
     onReportFoundPetClick: () -> Unit = {}
 ) {
-    val reportedPetsFlow = remember { reportedPetRepository.getReportedPets() }
-    val reportedPets by reportedPetsFlow.collectAsState(initial = emptyList())
-
-
     val context = LocalContext.current
+
     var showAbandonedAnimalDialog by remember { mutableStateOf(false) }
     var showAnimalAbuseDialog by remember { mutableStateOf(false) }
 
@@ -214,27 +201,30 @@ fun ReportsScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(reportedPets) { pet ->
-                    Card(modifier = Modifier
-                        .fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.pet_logo),
-                                contentDescription = pet.description,
-                                modifier = Modifier.size(50.dp)
-                            )
-                            Text(
-                                text = pet.description,
-                                fontSize = 16.sp
-                            )
-                        }
-                    }
+                // Replace with emergency reporting cards
+                item {
+                    ReportCard(
+                        title = "Report Abandoned Animal",
+                        imageRes = R.drawable.abandoned_animal,
+                        onReportClick = { showAbandonedAnimalDialog = true }
+                    )
+                }
+
+                item {
+                    ReportCard(
+                        title = "Report Animal Abuse",
+                        imageRes = R.drawable.animal_abuse,
+                        onReportClick = { showAnimalAbuseDialog = true }
+                    )
+                }
+
+                // Placeholder for any other emergency reporting options
+                item {
+                    ReportCard(
+                        title = "Animal Emergency",
+                        imageRes = R.drawable.ic_phone,
+                        onReportClick = { showAbandonedAnimalDialog = true }
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -354,7 +344,9 @@ fun ReportCard(
 @Composable
 fun ReportsScreenPreview() {
     MaterialTheme {
-        val reportedPetRepository = ReportedPetRepository()
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val reportedPetRepository =
+            (context.applicationContext as com.example.pethood.PetHoodApplication).reportedPetRepository
         ReportsScreen(
             onReportMissingPetClick = {},
             onReportFoundPetClick = {}

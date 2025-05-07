@@ -1,12 +1,13 @@
 package com.example.pethood.data
 
-import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.firestore.ktx.toObject
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 
 class PetRepository {
 
-    private val firestore = FirebaseFirestore.getInstance()
+    private val firestore = Firebase.firestore
     private val petsCollection = firestore.collection("pets")
 
     suspend fun getPets(): List<Pet> {

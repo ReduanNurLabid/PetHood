@@ -4,10 +4,14 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.util.Log
 import androidx.core.content.edit
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.ktx.auth
+import com.google.firebase.auth.ktx.userProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
 /**
@@ -41,21 +45,34 @@ class UserRepository(context: Context) {
                     
                     // Save additional user data to Firestore
                     firebaseUser?.uid?.let { uid ->
+                        Log.d("UserRepository", "Creating user document in Firestore for uid: $uid")
+
                         val userData = hashMapOf(
                             "id" to uid,
                             "email" to user.email,
                             "name" to user.name,
                             "phoneNumber" to user.phoneNumber,
-                            "profileImageUrl" to user.profileImageUrl
+                            "profileImageUrl" to user.profileImageUrl,
+                            "createdAt" to com.google.firebase.Timestamp.now()
                         )
                         
                         firestore.collection("users")
                             .document(uid)
                             .set(userData)
                             .addOnSuccessListener {
+                                Log.d(
+                                    "UserRepository",
+                                    "User document created successfully in Firestore"
+                                )
+
                                 // Update display name
                                 firebaseUser.updateProfile(profileUpdates)
                                     .addOnSuccessListener {
+                                        Log.d(
+                                            "UserRepository",
+                                            "Firebase Auth profile updated successfully"
+                                        )
+
                                         // Save user to local storage
                                         val localUser = User(
                                             id = uid,
@@ -75,7 +92,26 @@ class UserRepository(context: Context) {
                             }
                             .addOnFailureListener { e ->
                                 Log.e("UserRepository", "Failed to save user to Firestore", e)
-                                continuation.resume(false)
+
+                                // Try one more time with set and merge
+                                firestore.collection("users")
+                                    .document(uid)
+                                    .set(userData, com.google.firebase.firestore.SetOptions.merge())
+                                    .addOnSuccessListener {
+                                        Log.d(
+                                            "UserRepository",
+                                            "User document created on second attempt"
+                                        )
+                                        continuation.resume(true)
+                                    }
+                                    .addOnFailureListener { e2 ->
+                                        Log.e(
+                                            "UserRepository",
+                                            "Failed to save user on second attempt",
+                                            e2
+                                        )
+                                        continuation.resume(false)
+                                    }
                             }
                     } ?: continuation.resume(false)
                 } else {
@@ -194,21 +230,56 @@ class UserRepository(context: Context) {
     suspend fun updateProfileImageUrl(imageUrl: String): Boolean = suspendCoroutine { continuation ->
         val firebaseUser = auth.currentUser
         if (firebaseUser == null) {
+            Log.e("UserRepository", "Cannot update profile image URL: User not logged in")
             continuation.resume(false)
             return@suspendCoroutine
         }
-        
-        // Update profile image URL in Firestore
+
+        Log.d("UserRepository", "Updating profile image URL: $imageUrl")
+
+        // Create user data map with the image URL
+        val userData = mapOf(
+            "profileImageUrl" to imageUrl
+        )
+
+        // Use set with merge option to create the document if it doesn't exist
         firestore.collection("users").document(firebaseUser.uid)
-            .update("profileImageUrl", imageUrl)
+            .set(userData, com.google.firebase.firestore.SetOptions.merge())
             .addOnSuccessListener {
+                Log.d("UserRepository", "Profile image URL updated in Firestore successfully")
                 // Update local user data
                 val currentUser = getCurrentUser()
                 if (currentUser != null) {
                     val updatedUser = currentUser.copy(profileImageUrl = imageUrl)
                     saveCurrentUser(updatedUser)
+
+                    // Also update profile photo URL in Firebase Auth
+                    try {
+                        val profileUpdates = com.google.firebase.auth.userProfileChangeRequest {
+                            photoUri = android.net.Uri.parse(imageUrl)
+                        }
+                        firebaseUser.updateProfile(profileUpdates)
+                            .addOnSuccessListener {
+                                Log.d("UserRepository", "Profile image also updated in Auth")
+                            }
+                            .addOnFailureListener { e ->
+                                Log.w(
+                                    "UserRepository",
+                                    "Failed to update Auth profile image, but Firestore update succeeded",
+                                    e
+                                )
+                            }
+                    } catch (e: Exception) {
+                        Log.w(
+                            "UserRepository",
+                            "Error parsing image URL for Auth profile, but Firestore update succeeded",
+                            e
+                        )
+                    }
+
                     continuation.resume(true)
                 } else {
+                    Log.e("UserRepository", "Current user is null after Firestore update")
                     continuation.resume(false)
                 }
             }
@@ -259,6 +330,103 @@ class UserRepository(context: Context) {
             }
     }
     
+    /**
+     * Update the current user's phone number
+     * @return true if update was successful
+     */
+    suspend fun updatePhoneNumber(phoneNumber: String): Boolean = suspendCoroutine { continuation ->
+        val firebaseUser = auth.currentUser
+        if (firebaseUser == null) {
+            Log.e("UserRepository", "Cannot update phone number: User not logged in")
+            continuation.resume(false)
+            return@suspendCoroutine
+        }
+
+        Log.d("UserRepository", "Updating phone number to: $phoneNumber")
+
+        // Create user data map with the phone number
+        val userData = mapOf(
+            "phoneNumber" to phoneNumber
+        )
+
+        // Use set with merge option to create the document if it doesn't exist
+        firestore.collection("users").document(firebaseUser.uid)
+            .set(userData, com.google.firebase.firestore.SetOptions.merge())
+            .addOnSuccessListener {
+                Log.d("UserRepository", "Phone number updated in Firestore successfully")
+                // Update local user data
+                val currentUser = getCurrentUser()
+                if (currentUser != null) {
+                    val updatedUser = currentUser.copy(phoneNumber = phoneNumber)
+                    saveCurrentUser(updatedUser)
+                    continuation.resume(true)
+                } else {
+                    Log.e("UserRepository", "Current user is null after phone number update")
+                    continuation.resume(false)
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("UserRepository", "Failed to update phone number", e)
+                continuation.resume(false)
+            }
+    }
+
+    /**
+     * Update the current user's name
+     * @return true if update was successful
+     */
+    suspend fun updateName(name: String): Boolean = suspendCoroutine { continuation ->
+        val firebaseUser = auth.currentUser
+        if (firebaseUser == null) {
+            Log.e("UserRepository", "Cannot update name: User not logged in")
+            continuation.resume(false)
+            return@suspendCoroutine
+        }
+
+        Log.d("UserRepository", "Updating name to: $name")
+
+        // Create user data map with the name
+        val userData = mapOf(
+            "name" to name
+        )
+
+        // Use set with merge option to create the document if it doesn't exist
+        firestore.collection("users").document(firebaseUser.uid)
+            .set(userData, com.google.firebase.firestore.SetOptions.merge())
+            .addOnSuccessListener {
+                Log.d("UserRepository", "Name updated in Firestore successfully")
+
+                // Update Firebase Auth profile
+                val profileUpdates = com.google.firebase.auth.userProfileChangeRequest {
+                    displayName = name
+                }
+
+                firebaseUser.updateProfile(profileUpdates)
+                    .addOnSuccessListener {
+                        Log.d("UserRepository", "Name also updated in Auth profile")
+                        // Update local user data
+                        val currentUser = getCurrentUser()
+                        if (currentUser != null) {
+                            val updatedUser = currentUser.copy(name = name)
+                            saveCurrentUser(updatedUser)
+                            continuation.resume(true)
+                        } else {
+                            Log.e("UserRepository", "Current user is null after name update")
+                            continuation.resume(false)
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("UserRepository", "Failed to update name in Auth profile", e)
+                        // Still continue as success since Firestore was updated
+                        continuation.resume(true)
+                    }
+            }
+            .addOnFailureListener { e ->
+                Log.e("UserRepository", "Failed to update name", e)
+                continuation.resume(false)
+            }
+    }
+
     /**
      * Clear the current user session (logout)
      */

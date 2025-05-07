@@ -27,32 +27,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.pethood.R
 import com.example.pethood.data.Pet
-import com.example.pethood.data.PetCategory
 import com.example.pethood.data.PetGender
+import com.example.pethood.data.PetRepository
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
-import com.example.pethood.data.PetRepository
-import androidx.compose.ui.platform.LocalLifecycleOwner
+import kotlinx.coroutines.launch
 
 @Composable
 fun PetDetailScreen(
@@ -62,7 +60,6 @@ fun PetDetailScreen(
     navigateToRoute: (Screen) -> Unit,
     repository: PetRepository = hiltViewModel()
 ) {
-
     val scope = rememberCoroutineScope()
     var pet by remember { mutableStateOf<Pet?>(null) }
 
@@ -81,7 +78,7 @@ fun PetDetailScreen(
         //Show a loading
         return
     }
-) {
+
     Scaffold(
         bottomBar = {
             BottomNavigationBar(
@@ -210,13 +207,13 @@ fun PetDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                // About section
-                Text(
-                    text = "About",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.DarkGray
-                )
+                    // About section
+                    Text(
+                        text = "About",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.DarkGray
+                    )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -291,14 +288,8 @@ fun InfoCard(title: String, value: String, modifier: Modifier = Modifier) {
 @Composable
 fun PetDetailScreenPreview() {
     MaterialTheme {
-       PetDetailScreen(
+        PetDetailScreen(
             petId = "1",
-            onBackClick = {
-
-            },
-            onRequestClick = {
-
-            ),
             onBackClick = {},
             onRequestClick = {},
             navigateToRoute = {}

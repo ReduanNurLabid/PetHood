@@ -2,6 +2,7 @@ package com.example.pethood
 
 import android.app.Application
 import com.example.pethood.data.AdoptionPetRepository
+import com.example.pethood.data.AuthService
 import com.example.pethood.data.ReportedPetRepository
 import com.example.pethood.data.UserRepository
 
@@ -12,11 +13,15 @@ class PetHoodApplication : Application() {
     }
 
     val reportedPetRepository: ReportedPetRepository by lazy {
-        ReportedPetRepository(applicationContext)
+        ReportedPetRepository()
     }
     
     val adoptionPetRepository: AdoptionPetRepository by lazy {
         AdoptionPetRepository(applicationContext)
+    }
+
+    val authService: AuthService by lazy {
+        AuthService()
     }
 
     companion object {
@@ -36,8 +41,5 @@ class PetHoodApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        
-        // Initialize Firebase
-        FirebaseApp.initializeApp(this)
     }
 }

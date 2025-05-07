@@ -1,91 +1,130 @@
 package com.example.pethood.data
 
-import com.google.firebase.firestore.FirebaseFirestore
-import java.util.Date
+import android.util.Log
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
+import java.util.Date
 
 /**
  * Repository for handling reported pets (missing and found)
  */
 class ReportedPetRepository() {
 
-    private val firestore = FirebaseFirestore.getInstance()
-    private val reportedPetsCollection = firestore.collection("reportedPets")
-
-    /*
+    private val firestore = Firebase.firestore
+    private val missingPetsCollection = firestore.collection("missingPets")
+    private val foundPetsCollection = firestore.collection("foundPets")
 
     init {
-        // Load pets from storage when repository is created
-        loadPets()
+        // Don't add sample data automatically
+        Log.d("ReportedPetRepository", "Repository initialized without adding sample data")
     }
 
-    /**
-     * Add a new reported pet
-     *//*
-    suspend fun reportPet(pet: ReportedPet): Long {
-        val pets = if (pet.isMissing) {
-            getAllMissingPets().toMutableList()
-        } else {
-            getAllFoundPets().toMutableList()
-        }
-
-        // Generate new ID, changed to string
-        val newId = (pets.maxOfOrNull { it.id?.toLong() ?: 0 } ?: 0) + 1
-        val petWithId = pet.copy(id = newId)
-
-        // Add to list
-        pets.add(petWithId)
-
-        // Save the updated list
-        if (pet.isMissing) {
-            saveMissingPets(pets)
-            _missingPets.value = pets
-        } else {
-            saveFoundPets(pets)
-            _foundPets.value = pets
-        }
-
-        return newId
-    }
-
-    */
-    suspend fun addReportedPet(pet: ReportedPet) {
-        val documentReference = reportedPetsCollection.document()
-        val petWithId = pet.copy(id = documentReference.id)
+    suspend fun addMissingPet(pet: ReportedPet) {
+        // Always set isMissing=true for missing pets
+        val petWithMissing = pet.copy(isMissing = true)
+        val documentReference = missingPetsCollection.document()
+        val petWithId = petWithMissing.copy(id = documentReference.id)
         documentReference.set(petWithId).await()
     }
 
-    /**
-     * Get all reported pets
-     */
-    suspend fun getAllReportedPets(): List<ReportedPet> {
-        val snapshot = reportedPetsCollection.get().await()
-        return snapshot.toObjects(ReportedPet::class.java)
+    suspend fun addFoundPet(pet: ReportedPet) {
+        // Always set isMissing=false for found pets
+        val petWithFound = pet.copy(isMissing = false)
+        val documentReference = foundPetsCollection.document()
+        val petWithId = petWithFound.copy(id = documentReference.id)
+        documentReference.set(petWithId).await()
     }
 
-    suspend fun getAllMissingPets(): List<ReportedPet> {
-        val snapshot = reportedPetsCollection.whereEqualTo("isMissing", true).get().await()
-        return snapshot.toObjects(ReportedPet::class.java)
-    }
-
-    suspend fun getAllFoundPets(): List<ReportedPet> {
-        val snapshot = reportedPetsCollection.whereEqualTo("isMissing", false).get().await()
-        return snapshot.toObjects(ReportedPet::class.java)
-    }
-    
-    suspend fun updateReportedPet(pet: ReportedPet) {
-        pet.id?.let {
-            reportedPetsCollection.document(it).set(pet).await()
+    // For backward compatibility
+    suspend fun addReportedPet(pet: ReportedPet) {
+        if (pet.isMissing) {
+            addMissingPet(pet)
+        } else {
+            addFoundPet(pet)
         }
     }
-    
-    suspend fun deleteReportedPet(petId: String) {
-        reportedPetsCollection.document(petId).delete().await()
+
+    /**
+     * Get all reported pets (combines both collections)
+     */
+    suspend fun getAllReportedPets(): List<ReportedPet> {
+        // Get missing pets
+        val missingSnapshot = missingPetsCollection.get().await()
+        val missingPets = missingSnapshot.toObjects(ReportedPet::class.java)
+
+        // Get found pets
+        val foundSnapshot = foundPetsCollection.get().await()
+        val foundPets = foundSnapshot.toObjects(ReportedPet::class.java)
+
+        // Combine the lists
+        return missingPets + foundPets
     }
 
-    suspend fun getPetById(id: String): ReportedPet? {
+    /**
+     * Get all missing pets
+     */
+    suspend fun getAllMissingPets(): List<ReportedPet> {
+        try {
+            Log.d("ReportedPetRepository", "Fetching missing pets from Firestore...")
+            val snapshot = missingPetsCollection.get().await()
+            val pets = snapshot.toObjects(ReportedPet::class.java)
+            Log.d("ReportedPetRepository", "Loaded ${pets.size} missing pets")
+            return pets.map { it.copy(isMissing = true) } // Ensure isMissing flag is set
+        } catch (e: Exception) {
+            Log.e("ReportedPetRepository", "Error fetching missing pets: ${e.message}", e)
+            return emptyList()
+        }
+    }
+
+    /**
+     * Get all found pets
+     */
+    suspend fun getAllFoundPets(): List<ReportedPet> {
+        try {
+            Log.d("ReportedPetRepository", "Fetching found pets from Firestore...")
+            val snapshot = foundPetsCollection.get().await()
+            val pets = snapshot.toObjects(ReportedPet::class.java)
+            Log.d("ReportedPetRepository", "Loaded ${pets.size} found pets")
+            return pets.map { it.copy(isMissing = false) } // Ensure isMissing flag is not set
+        } catch (e: Exception) {
+            Log.e("ReportedPetRepository", "Error fetching found pets: ${e.message}", e)
+            return emptyList()
+        }
+    }
+
+    suspend fun updateReportedPet(pet: ReportedPet) {
+        pet.id?.let {
+            // Check if it's a missing or found pet
+            if (pet.isMissing) {
+                missingPetsCollection.document(it).set(pet).await()
+            } else {
+                foundPetsCollection.document(it).set(pet).await()
+            }
+        }
+    }
+
+    suspend fun deleteMissingPet(petId: String) {
+        missingPetsCollection.document(petId).delete().await()
+    }
+
+    suspend fun deleteFoundPet(petId: String) {
+        foundPetsCollection.document(petId).delete().await()
+    }
+
+    // For backward compatibility
+    suspend fun deleteReportedPet(petId: String, isMissing: Boolean = true) {
+        if (isMissing) {
+            deleteMissingPet(petId)
+        } else {
+            deleteFoundPet(petId)
+        }
+    }
+
+    suspend fun getPetById(id: String, isMissing: Boolean): ReportedPet? {
         return try {
-            val documentSnapshot = reportedPetsCollection.document(id).get().await()
+            val collection = if (isMissing) missingPetsCollection else foundPetsCollection
+            val documentSnapshot = collection.document(id).get().await()
             if (documentSnapshot.exists()) {
                 documentSnapshot.toObject(ReportedPet::class.java)
             } else {
@@ -96,112 +135,126 @@ class ReportedPetRepository() {
         }
     }
 
+    // Try to find a pet across both collections
+    suspend fun getPetById(id: String): ReportedPet? {
+        val missingPet = getPetById(id, true)
+        if (missingPet != null) {
+            return missingPet
+        }
+        return getPetById(id, false)
+    }
+
+    // Alias method to maintain compatibility with existing code
+    suspend fun getReportedPet(id: String): ReportedPet? {
+        return getPetById(id)
+    }
+
     /**
      * Delete a pet by ID
      */
-    fun deletePet(id: Long, isMissing: Boolean) {
+    suspend fun deletePet(id: String, isMissing: Boolean) {
         val pets = if (isMissing) {
-            //getAllMissingPets().toMutableList()
-            emptyList<ReportedPet>()
+            getAllMissingPets()
         } else {
-           // getAllFoundPets().toMutableList()
-            emptyList<ReportedPet>()
+            getAllFoundPets()
+        }
+        pets.find { it.id == id }?.let {
+            deleteReportedPet(it.id!!)
         }
     }
 
     /**
      * Search for pets by query string
      */
-    fun searchPets(query: String, isMissing: Boolean): List<ReportedPet> {
-        return emptyList<ReportedPet>()
-//        val pets = if (isMissing) getAllMissingPets() else getAllFoundPets()
-//
-//        return if (query.isBlank()) {
-//            pets
-//        } else {
-//            pets.filter {
-//                it.name.contains(query, ignoreCase = true) ||
-//                        it.type.contains(query, ignoreCase = true) ||
-//                        it.lastSeen.contains(query, ignoreCase = true) ||
-//                        it.description.contains(query, ignoreCase = true)
-//            }
-//        }
+    suspend fun searchPets(query: String, isMissing: Boolean): List<ReportedPet> {
+        val pets = if (isMissing) getAllMissingPets() else getAllFoundPets()
+
+        return if (query.isBlank()) {
+            pets
+        } else {
+            pets.filter {
+                it.name.contains(query, ignoreCase = true) ||
+                        it.type.contains(query, ignoreCase = true) ||
+                        it.lastSeen.contains(query, ignoreCase = true) ||
+                        it.description.contains(query, ignoreCase = true)
+            }
+        }
     }
 
     /**
      * Add sample data for testing/demo purposes
      */
-    fun addSampleData() {
-        // Check if we already have data
-        /*
-        if (_missingPets.value.isNotEmpty() || _foundPets.value.isNotEmpty()) {
-            return
-        }
-        */
-        // Sample missing pets
+    suspend fun addSampleData() {
         val missingPets = listOf(
             ReportedPet(
-                id = 1,
+                id = "1",
                 name = "Max",
                 type = "Golden Retriever",
                 lastSeen = "Central Park",
                 description = "Medium-sized golden retriever with a blue collar. Responds to 'Max'.",
-                imageUrl = "dog_zimmer", // Using existing assets
-                imageUri = "", // No uploaded image for samples
-                contactNumber = "555-123-4567", // Sample contact number
-                reporterId = "user1", // Sample reporter ID
+                imageUrl = "dog_zimmer",
+                imageUri = "",
+                contactNumber = "555-123-4567",
+                userId = "user1",
+                petId = "",
                 isMissing = true,
-                date = Date(System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000) // 5 days ago
+                date = Date(System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000)
             ),
             ReportedPet(
-                id = 2,
+                id = "2",
                 name = "Luna",
                 type = "Siamese Cat",
                 lastSeen = "Main Street",
                 description = "Small siamese cat with blue eyes. Very shy.",
-                imageUrl = "cat_nero", // Using existing assets
-                imageUri = "", // No uploaded image for samples
-                contactNumber = "555-987-6543", // Sample contact number
-                reporterId = "user2", // Sample reporter ID
+                imageUrl = "cat_nero",
+                imageUri = "",
+                contactNumber = "555-987-6543",
+                userId = "user2",
+                petId = "",
                 isMissing = true,
-                date = Date(System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000) // 2 days ago
+                date = Date(System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000)
             )
         )
 
-        // Sample found pets
         val foundPets = listOf(
             ReportedPet(
-                id = 1,
+                id = "3",
                 name = "Unknown Dog",
                 type = "Mixed Breed",
                 lastSeen = "Park Avenue",
                 description = "Medium-sized mixed breed dog. No collar but seems well-behaved.",
-                imageUrl = "dog_nemo", // Using existing assets
-                imageUri = "", // No uploaded image for samples
-                contactNumber = "555-246-8135", // Sample contact number
-                reporterId = "user3", // Sample reporter ID
+                imageUrl = "dog_nemo",
+                imageUri = "",
+                contactNumber = "555-246-8135",
+                userId = "user3",
+                petId = "",
                 isMissing = false,
-                date = Date(System.currentTimeMillis() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
+                date = Date(System.currentTimeMillis() - 1 * 24 * 60 * 60 * 1000)
             ),
             ReportedPet(
-                id = 2,
+                id = "4",
                 name = "Unknown Cat",
                 type = "Tabby",
                 lastSeen = "Elm Street",
                 description = "Young tabby cat with white paws. Very friendly.",
-                imageUrl = "cat_bunty", // Using existing assets
-                imageUri = "", // No uploaded image for samples
-                contactNumber = "555-369-1470", // Sample contact number
-                reporterId = "user4", // Sample reporter ID
+                imageUrl = "cat_bunty",
+                imageUri = "",
+                contactNumber = "555-369-1470",
+                userId = "user4",
+                petId = "",
                 isMissing = false,
-                date = Date(System.currentTimeMillis() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
+                date = Date(System.currentTimeMillis() - 3 * 24 * 60 * 60 * 1000)
             )
         )
 
-        // Save the sample data, changed to add in db
-        missingPets.forEach { addReportedPet(it)}
-        foundPets.forEach { addReportedPet(it)}
-
+        missingPets.forEach { addMissingPet(it) }
+        foundPets.forEach { addFoundPet(it) }
     }
 
+    // Returns a Flow of reported pets for real-time updates
+    fun getReportedPets(): kotlinx.coroutines.flow.Flow<List<ReportedPet>> {
+        return kotlinx.coroutines.flow.flow {
+            emit(getAllReportedPets())
+        }
+    }
 }

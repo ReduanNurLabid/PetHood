@@ -1,5 +1,7 @@
 package com.example.pethood.ui.components
 
+import android.net.Uri
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.R
 import com.example.pethood.data.Pet
 import com.example.pethood.data.PetGender
@@ -58,14 +61,55 @@ fun PetCard(
                         .height(120.dp)
                         .fillMaxWidth()
                 ) {
-                    // For demo sample pets, use resource drawable
-                    val resourceId = LocalContext.current.resources.getIdentifier(
-                        pet.imageUrl, "drawable", LocalContext.current.packageName
-                    )
-                    val painter = if (resourceId != 0) {
-                        painterResource(id = resourceId)
-                    } else {
-                        painterResource(id = R.drawable.pet_logo) // Fallback
+                    // Try loading image - could be from a drawable resource name or a URI string
+                    val context = LocalContext.current
+
+                    // Parse URI outside of composable functions
+                    val uri =
+                        if (pet.imageUrl.startsWith("content://") || pet.imageUrl.startsWith("file://")) {
+                            try {
+                                Uri.parse(pet.imageUrl)
+                            } catch (e: Exception) {
+                                Log.e("PetCard", "Failed to parse URI: ${e.message}", e)
+                                null
+                            }
+                        } else null
+
+                    // Resource ID check outside of composable functions
+                    val resourceId = if (uri == null) {
+                        try {
+                            context.resources.getIdentifier(
+                                pet.imageUrl, "drawable", context.packageName
+                            )
+                        } catch (e: Exception) {
+                            Log.e("PetCard", "Failed to get resource ID: ${e.message}", e)
+                            0
+                        }
+                    } else 0
+
+                    // Choose the appropriate painter based on our checks
+                    val painter = when {
+                        uri != null -> {
+                            // Load from URI using Coil
+                            rememberAsyncImagePainter(
+                                model = uri,
+                                onError = {
+                                    Log.e(
+                                        "PetCard",
+                                        "Error loading image from URI: ${it.result.throwable.message}"
+                                    )
+                                }
+                            )
+                        }
+                        resourceId != 0 -> {
+                            painterResource(id = resourceId)
+                        }
+
+                        else -> {
+                            // Fallback
+                            Log.d("PetCard", "Using fallback image for pet: ${pet.name}")
+                            painterResource(id = R.drawable.pet_logo)
+                        }
                     }
 
                     Image(

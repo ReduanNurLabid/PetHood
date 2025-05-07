@@ -3,7 +3,6 @@ package com.example.pethood.screens
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.runtime.LaunchedEffect
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -35,9 +34,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,10 +55,11 @@ import com.example.pethood.MainActivity
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
 import com.example.pethood.data.AdoptionPet
-import com.example.pethood.data.AdoptionPetRepository
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.theme.PetHoodTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.UUID
 
@@ -71,14 +73,14 @@ fun AdoptionFormScreen(
     val adoptionPetRepository = PetHoodApplication.getInstance().adoptionPetRepository
     
     var submitSuccess by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     
     LaunchedEffect(submitSuccess) {
         if (submitSuccess) {
-            Toast.makeText(
-                context,
-                "Pet successfully put up for adoption!",
-                Toast.LENGTH_LONG
-            ).show()
+            coroutineScope.launch {
+                delay(500)
+                navigateToRoute(Screen.Home)
+            }
         }
     }
 
@@ -310,9 +312,28 @@ fun AdoptionFormScreen(
                             val userId = PetHoodApplication.getInstance().userRepository.getCurrentUserId()
                             val imageUriString = petImageUri?.toString() ?: ""
                             android.util.Log.d("AdoptionFormScreen", "Using image URI for submission: $imageUriString")
-                            
+
+                            petImageUri?.let {
+                                android.util.Log.d(
+                                    "AdoptionFormScreen",
+                                    "Image URI scheme: ${it.scheme}"
+                                )
+                                android.util.Log.d(
+                                    "AdoptionFormScreen",
+                                    "Image URI path: ${it.path}"
+                                )
+                                android.util.Log.d(
+                                    "AdoptionFormScreen",
+                                    "Image URI exists: ${
+                                        context.contentResolver.openInputStream(it)?.close()
+                                    }"
+                                )
+                            }
+
+                            val tempId = "temp-" + UUID.randomUUID().toString()
+
                             val newPet = AdoptionPet(
-                                id = "",
+                                id = tempId,
                                 name = name,
                                 category = petCategory,
                                 type = petType,
@@ -324,10 +345,44 @@ fun AdoptionFormScreen(
                                 date = Date()
                             )
 
-                            adoptionPetRepository.addAdoptionPet(newPet).addOnSuccessListener {
-                                submitSuccess = true
-                            }.addOnFailureListener{
-                                Toast.makeText(context, "Error creating adoption: ${it.message}", Toast.LENGTH_LONG).show()
+                            coroutineScope.launch {
+                                try {
+                                    adoptionPetRepository.addAdoptionPet(newPet)
+                                        .collect { result ->
+                                            result.fold(
+                                                onSuccess = {
+                                                    android.util.Log.d(
+                                                        "AdoptionFormScreen",
+                                                        "Pet adoption submission successful"
+                                                    )
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Pet successfully put up for adoption!",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+                                                    submitSuccess = true
+                                                },
+                                                onFailure = { exception ->
+                                                    android.util.Log.e(
+                                                        "AdoptionFormScreen",
+                                                        "Error submitting pet: ${exception.message}",
+                                                        exception
+                                                    )
+                                                    Toast.makeText(
+                                                        context,
+                                                        "Error creating adoption: ${exception.message}",
+                                                        Toast.LENGTH_LONG
+                                                    ).show()
+                                                }
+                                            )
+                                        }
+                                } catch (e: Exception) {
+                                    Toast.makeText(
+                                        context,
+                                        "Error creating adoption: ${e.message}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
                             }
                         } catch (e: Exception) {
                             Toast.makeText(context, "Error creating adoption: ${e.message}", Toast.LENGTH_LONG).show()
@@ -384,4 +439,4 @@ fun AdoptionFormScreenPreview() {
             navigateToRoute = {}
         )
     }
-} 
+}

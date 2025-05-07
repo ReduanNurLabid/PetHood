@@ -1,12 +1,10 @@
 package com.example.pethood.screens
 
-import android.annotation.SuppressLint
 import android.net.Uri
+import android.util.Log
 import android.widget.Toast
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,15 +14,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,30 +27,27 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.rememberAsyncImagePainter
 import com.example.pethood.PetHoodApplication
 import com.example.pethood.R
+import com.example.pethood.data.AdoptionPetRepository
 import com.example.pethood.data.Pet
 import com.example.pethood.data.PetCategory
 import com.example.pethood.navigation.Screen
@@ -63,34 +55,144 @@ import com.example.pethood.ui.components.BottomNavigationBar
 import com.example.pethood.ui.components.CategorySelector
 import com.example.pethood.ui.components.PetCard
 import com.example.pethood.ui.components.SearchBar
-import kotlinx.coroutines.flow.Flow
+import com.google.firebase.firestore.ktx.firestore
+import com.google.firebase.ktx.Firebase
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
-@SuppressLint("FlowOperatorInvokedInComposition")
-@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(
     navigateToRoute: (Screen) -> Unit = {},
-    petRepository: com.example.pethood.data.PetRepository = remember {
-        PetHoodApplication.getInstance().petRepository
-    },
+    adoptionPetRepository: AdoptionPetRepository = PetHoodApplication.getInstance().adoptionPetRepository,
     onPetClick: (Pet) -> Unit = {},
     onPutUpForAdoptionClick: () -> Unit = {},
-    onAdoptionPetClick: (String) -> Unit = {}
+    onAdoptionPetClick: (String) -> Unit = {},
+    refreshTrigger: Int = 0 // External refresh trigger
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf(PetCategory.DOG) }
+    val scope = rememberCoroutineScope()
 
-    //Get the pets from the repository
-    val allPets: List<Pet> by petRepository.getPets().observeAsState(listOf())
+    // Store pets in state
+    var allPets by remember { mutableStateOf<List<Pet>>(emptyList()) }
+
+    // Add a refresh trigger to reload data when needed
+    var internalRefreshTrigger by remember { mutableStateOf(0) }
+
+    // Combine external and internal refresh triggers
+    val combinedRefreshTrigger = refreshTrigger + internalRefreshTrigger
+
+    // Function to load adoption pets
+    fun loadAdoptionPets() {
+        scope.launch {
+            try {
+                adoptionPetRepository.getAllAdoptionPets()
+                    .collect { result ->
+                        result.fold(
+                            onSuccess = { adoptionPets ->
+                                Log.d("HomeScreen", "Loaded ${adoptionPets.size} adoption pets")
+
+                                // Convert AdoptionPet to Pet
+                                allPets = adoptionPets.map { adoptionPet ->
+                                    Pet(
+                                        id = adoptionPet.id,
+                                        name = adoptionPet.name,
+                                        breed = adoptionPet.type,
+                                        category = when (adoptionPet.category.lowercase()) {
+                                            "dog" -> PetCategory.DOG
+                                            "cat" -> PetCategory.CAT
+                                            else -> PetCategory.OTHER
+                                        },
+                                        gender = com.example.pethood.data.PetGender.MALE, // Default
+                                        age = 0, // Not available
+                                        description = adoptionPet.description,
+                                        imageUrl = adoptionPet.imageUri, // Use the URI string directly
+                                        contactNumber = adoptionPet.contactNumber,
+                                        location = adoptionPet.location
+                                    ).also {
+                                        // Debug log to verify the image URL
+                                        Log.d(
+                                            "HomeScreen",
+                                            "Pet ${it.name} has image URL: ${it.imageUrl}"
+                                        )
+                                    }
+                                }
+                            },
+                            onFailure = { exception ->
+                                // Handle failure
+                                Log.e("HomeScreen", "Failed to load pets: ${exception.message}")
+                                Toast.makeText(
+                                    context,
+                                    "Failed to load pets: ${exception.message}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        )
+                    }
+            } catch (e: Exception) {
+                Log.e("HomeScreen", "Exception when loading pets: ${e.message}", e)
+                Toast.makeText(
+                    context,
+                    "Failed to load pets: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    // Load data when screen is first created and force refresh when screen appears
+    DisposableEffect(Unit) {
+        // Force an immediate data refresh when the screen is created
+        loadAdoptionPets()
+
+        // Schedule another refresh after a short delay to ensure data is loaded
+        scope.launch {
+            delay(300)
+            internalRefreshTrigger++
+        }
+
+        onDispose { }
+    }
+
+    // Refresh data when either trigger changes
+    LaunchedEffect(combinedRefreshTrigger) {
+        Log.d("HomeScreen", "Refreshing data with trigger: $combinedRefreshTrigger")
+        loadAdoptionPets()
+    }
+
+    // Check data and log results
+    LaunchedEffect(allPets) {
+        Log.d("HomeScreen", "Loaded ${allPets.size} pets")
+        if (allPets.isEmpty()) {
+            Log.d("HomeScreen", "No pets loaded, checking Firestore directly")
+            // Try direct check
+            scope.launch {
+                try {
+                    val snapshot = Firebase.firestore.collection("adoptionPets").get().await()
+                    Log.d(
+                        "HomeScreen",
+                        "Direct Firestore check: ${snapshot.size()} documents found"
+                    )
+                    snapshot.documents.forEach { doc ->
+                        Log.d("HomeScreen", "Document: ${doc.id} - ${doc.data}")
+                    }
+                } catch (e: Exception) {
+                    Log.e("HomeScreen", "Error checking Firestore directly: ${e.message}", e)
+                }
+            }
+        }
+    }
 
     // Filter pets by category and search query
     val filteredPets = remember(allPets, searchQuery, selectedCategory) {
         allPets.filter { pet ->
             val matchesCategory = when (selectedCategory) {
-                PetCategory.DOG -> pet.category.equals("Dog", ignoreCase = true)
-                PetCategory.CAT -> pet.category.equals("Cat", ignoreCase = true)
-                else -> pet.category.equals("Bird", ignoreCase = true) // Assuming other means Bird
+                PetCategory.DOG -> pet.category == PetCategory.DOG
+                PetCategory.CAT -> pet.category == PetCategory.CAT
+                else -> pet.category == PetCategory.OTHER
             }
             val matchesSearchQuery = searchQuery.isEmpty() ||
                     pet.name.contains(searchQuery, ignoreCase = true) ||
@@ -99,15 +201,10 @@ fun HomeScreen(
             matchesCategory && matchesSearchQuery
         }
     }
-    
+
     val pagerState = rememberPagerState(initialPage = 0) {
         filteredPets.size
     }
-    
-    // Remember pager states for each category
-    val dogPagerState = rememberPagerState(initialPage = 0, pageCount = { dogPets.size })
-    val catPagerState = rememberPagerState(initialPage = 0, pageCount = { catPets.size })
-    val birdPagerState = rememberPagerState(initialPage = 0, pageCount = { birdPets.size })
 
     val gradient = Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.1f), Color(0xFFE0E0E0).copy(alpha = 0.3f)), tileMode = TileMode.Clamp)
     Scaffold(
@@ -135,11 +232,11 @@ fun HomeScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                Text(
-                    text = "PetHood",
-                    color = MaterialTheme.colorScheme.primary,
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.Bold,
+                    Text(
+                        text = "PetHood",
+                        color = MaterialTheme.colorScheme.primary,
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
                     
@@ -171,116 +268,48 @@ fun HomeScreen(
                     onCategorySelected = { selectedCategory = it }
                 )
 
-                // Display pets for the selected category
-                when (selectedCategory) {
-                    PetCategory.DOG -> {
-                        DisplayPets(
-                            pets = filteredPets,
-                            category = PetCategory.DOG,
-                            pagerState = pagerState,
-                            onPetClick = { pet ->
-                                onAdoptionPetClick(pet.id)
-                            },
-                            onContactClick = { pet ->
-                                if (pet.contactNumber.isNotEmpty()) {
-                                    val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
-                                        data = android.net.Uri.parse("tel:${pet.contactNumber}")
-                                    }
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(
-                                            context,
-                                            "Could not open phone dialer",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        "No contact number provided",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                DisplayPets(
+                    pets = filteredPets,
+                    category = selectedCategory,
+                    pagerState = pagerState,
+                    onPetClick = { pet ->
+                        onAdoptionPetClick(pet.id)
+                    },
+                    onContactClick = { pet ->
+                        if (pet.contactNumber.isNotEmpty()) {
+                            val intent =
+                                android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
+                                    data = Uri.parse("tel:${pet.contactNumber}")
                             }
-                        )
-                    }
-                    PetCategory.CAT -> {
-                        DisplayPets(
-                            pets = filteredPets,
-                            category = PetCategory.CAT,
-                            pagerState = pagerState,
-                            onPetClick = { pet ->
-                                onAdoptionPetClick(pet.id)
-                            },
-                            onContactClick = { pet ->
-                                if (pet.contactNumber.isNotEmpty()) {
-                                    val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
-                                        data = android.net.Uri.parse("tel:${pet.contactNumber}")
-                                    }
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(
-                                            context,
-                                            "Could not open phone dialer",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        "No contact number provided",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                Toast.makeText(
+                                    context,
+                                    "Could not open phone dialer",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
-                        )
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "No contact number provided",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
                     }
-                    else -> {
-                        DisplayPets(
-                            pets = filteredPets,
-                            category = PetCategory.BIRD,
-                            pagerState = birdPagerState,
-                            onPetClick = { pet ->
-                                onAdoptionPetClick(pet.id)
-                            },
-                            onContactClick = { pet ->
-                                if (pet.contactNumber.isNotEmpty()) {
-                                    val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
-                                        data = android.net.Uri.parse("tel:${pet.contactNumber}")
-                                    }
-                                    try {
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(
-                                            context,
-                                            "Could not open phone dialer",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                } else {
-                                    Toast.makeText(
-                                        context,
-                                        "No contact number provided",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        )
-                    }
-                }
+                )
             }
         }
     }
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DisplayPets(
     pets: List<Pet>,
     category: PetCategory,
-    pagerState: androidx.compose.foundation.pager.PagerState,
+    pagerState: PagerState,
     onPetClick: (Pet) -> Unit,
     onContactClick: (Pet) -> Unit
 ) {
@@ -321,20 +350,18 @@ fun DisplayPets(
             val pet = pets[page]
             PetCard(
                 pet = pet,
-                category = category,
-                onCardClick = { onPetClick(pet) },
-                onContactClick = { onContactClick(pet) }
+                onPetClick = onPetClick,
+                onFavoriteClick = { /* Do nothing for now */ },
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
 }
-
 
 @Preview(showBackground = true)
 @Composable
 fun HomeScreenPreview() {
     MaterialTheme {
         HomeScreen()
-        }
     }
 }
