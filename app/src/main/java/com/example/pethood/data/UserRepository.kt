@@ -11,6 +11,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import com.google.gson.Gson
+import kotlinx.coroutines.tasks.await
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -427,6 +428,49 @@ class UserRepository(context: Context) {
             }
     }
 
+    /**
+     * Refresh current user data from Firestore
+     * @return updated User object or null if failed
+     */
+    suspend fun refreshCurrentUser(): User? = suspendCoroutine { continuation ->
+        val currentUserId = getCurrentUserId()
+        if (currentUserId == "default_user" || auth.currentUser == null) {
+            continuation.resume(null)
+            return@suspendCoroutine
+        }
+        
+        firestore.collection("users").document(currentUserId)
+            .get()
+            .addOnSuccessListener { document ->
+                if (document != null && document.exists()) {
+                    // Get current user to preserve password (not stored in Firestore)
+                    val currentUser = getCurrentUser()
+                    
+                    // Create updated user from document
+                    val updatedUser = User(
+                        id = currentUserId,
+                        email = document.getString("email") ?: currentUser?.email ?: "",
+                        // Keep local password as Firestore doesn't store it
+                        password = currentUser?.password ?: "",
+                        name = document.getString("name") ?: "",
+                        phoneNumber = document.getString("phoneNumber") ?: "",
+                        profileImageUrl = document.getString("profileImageUrl") ?: ""
+                    )
+                    
+                    // Save updated user
+                    saveCurrentUser(updatedUser)
+                    continuation.resume(updatedUser)
+                } else {
+                    Log.e("UserRepository", "User document does not exist in Firestore")
+                    continuation.resume(getCurrentUser())
+                }
+            }
+            .addOnFailureListener { e ->
+                Log.e("UserRepository", "Failed to refresh user data", e)
+                continuation.resume(getCurrentUser())
+            }
+    }
+    
     /**
      * Clear the current user session (logout)
      */

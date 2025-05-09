@@ -64,6 +64,7 @@ fun SignupScreen(
 
     val context = LocalContext.current
     val authService = PetHoodApplication.getInstance().authService
+    val userRepository = PetHoodApplication.getInstance().userRepository
 
     Box(
         modifier = Modifier
@@ -225,22 +226,28 @@ fun SignupScreen(
                                 authService.signup(email,password,name,phoneNumber)
                                     .addOnCompleteListener { task ->
                                         if (task.isSuccessful) {
+                                            // Create a User object and save it to the repository
+                                            val user = User(
+                                                id = userRepository.getCurrentUserId(),
+                                                email = email,
+                                                password = password, // Note: Storing password locally is not recommended in production
+                                                name = name,
+                                                phoneNumber = phoneNumber
+                                            )
+                                            userRepository.saveCurrentUser(user)
+                                            
                                             Toast.makeText(context, "Signup successful!", Toast.LENGTH_SHORT)
                                                 .show()
                                             onSignupSuccess()
                                         } else {
                                             errorMessage = task.exception?.message ?: "Signup failed."
+                                            isLoading = false
                                         }
                                     }
                             } catch(e: Exception){
                                 errorMessage = e.message?: "Signup failed."
-
-
-                            }
-                            finally {
                                 isLoading = false
                             }
-
                         }
                     }
                 },

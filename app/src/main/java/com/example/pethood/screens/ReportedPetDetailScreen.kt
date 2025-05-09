@@ -36,6 +36,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -65,16 +66,24 @@ fun ReportedPetDetailScreen(
     onBackClick: () -> Unit,
     onContactClick: () -> Unit = {},
     navigateToRoute: (Screen) -> Unit,
-    isCurrentUserReporter: Boolean = false,
     onPutUpForAdoptionClick: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val reportedPetRepository =
         PetHoodApplication.getInstance().reportedPetRepository
+    val userRepository = PetHoodApplication.getInstance().userRepository
+    val currentUserId = userRepository.getCurrentUserId()
+
     var pet by remember { mutableStateOf<ReportedPet?>(null) }
-    scope.launch {
-        pet = reportedPetRepository.getPetById(petId)
+    var isUserReporter by remember { mutableStateOf(false) }
+
+    LaunchedEffect(petId) {
+        scope.launch {
+            val foundPet = reportedPetRepository.getPetById(petId)
+            pet = foundPet
+            isUserReporter = foundPet?.userId == currentUserId
+        }
     }
 
     val localPet = remember(pet) { pet }
@@ -188,6 +197,48 @@ fun ReportedPetDetailScreen(
                 Button(
                     onClick = { showConfirmationDialog = false },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Show delete confirmation dialog
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteConfirmDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Report") },
+            text = { Text("Are you sure you want to delete this pet report?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        scope.launch {
+                            reportedPetRepository.deletePet(localPet.id, localPet.isMissing)
+                            Toast.makeText(
+                                context,
+                                "Report deleted",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            showDeleteConfirmDialog = false
+                            onBackClick()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showDeleteConfirmDialog = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Gray
+                    )
                 ) {
                     Text("Cancel")
                 }
@@ -372,7 +423,7 @@ fun ReportedPetDetailScreen(
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // Show different buttons based on whether current user is the reporter
-                if (isCurrentUserReporter) {
+                if (isUserReporter) {
                     Column {
                         // Mark as found/adopted button
                         OutlinedButton(
@@ -387,7 +438,27 @@ fun ReportedPetDetailScreen(
                             )
                         ) {
                             Text(
-                                text = if (localPet.isMissing) "Mark as Found" else "Mark as Adopted",
+                                text = if (localPet.isMissing) "Mark as Found" else "Mark as Handed to Owner",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // Delete report button
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedButton(
+                            onClick = { showDeleteConfirmDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color.Red),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color.Red
+                            )
+                        ) {
+                            Text(
+                                text = "Delete Report",
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold
                             )
@@ -517,8 +588,7 @@ fun MissingPetDetailScreenAsReporterPreview() {
         ReportedPetDetailScreen(
             petId = samplePet.id,
             onBackClick = {},
-            navigateToRoute = {},
-            isCurrentUserReporter = true // User is the reporter
+            navigateToRoute = {}
         )
     }
 }
@@ -545,8 +615,7 @@ fun MissingPetDetailScreenAsNonReporterPreview() {
         ReportedPetDetailScreen(
             petId = samplePet.id,
             onBackClick = {},
-            navigateToRoute = {},
-            isCurrentUserReporter = false // User is not the reporter
+            navigateToRoute = {}
         )
     }
 }
@@ -574,7 +643,6 @@ fun FoundPetDetailScreenAsReporterPreview() {
             petId = samplePet.id,
             onBackClick = {},
             navigateToRoute = {},
-            isCurrentUserReporter = true, // User is the reporter
             onPutUpForAdoptionClick = {}
         )
     }
@@ -602,8 +670,7 @@ fun FoundPetDetailScreenAsNonReporterPreview() {
         ReportedPetDetailScreen(
             petId = samplePet.id,
             onBackClick = {},
-            navigateToRoute = {},
-            isCurrentUserReporter = false // User is not the reporter
+            navigateToRoute = {}
         )
     }
 }

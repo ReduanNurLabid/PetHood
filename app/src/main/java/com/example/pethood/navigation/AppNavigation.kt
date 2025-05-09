@@ -2,6 +2,7 @@ package com.example.pethood.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -28,6 +29,7 @@ import com.example.pethood.screens.ProfileScreen
 import com.example.pethood.screens.ReportedPetDetailScreen
 import com.example.pethood.screens.ReportsScreen
 import com.example.pethood.screens.SignupScreen
+import kotlinx.coroutines.launch
 
 sealed class Screen(val route: String) {
     object Landing : Screen("landing")
@@ -262,9 +264,6 @@ fun AppNavigation(
         ) { backStackEntry ->
             val id = backStackEntry.arguments?.getString("id") ?: ""
 
-            val reportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
-            val userRepository = PetHoodApplication.getInstance().userRepository
-
             ReportedPetDetailScreen(
                 petId = id,
                 onBackClick = {
@@ -275,7 +274,6 @@ fun AppNavigation(
                         launchSingleTop = true
                     }
                 },
-                isCurrentUserReporter = false,
                 onPutUpForAdoptionClick = {
                     navController.navigate(Screen.AdoptionForm.route)
                 }

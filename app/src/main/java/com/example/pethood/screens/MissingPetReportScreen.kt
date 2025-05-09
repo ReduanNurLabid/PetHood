@@ -77,6 +77,10 @@ fun MissingPetReportScreen(
     var contactNumber by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    // Image URL variables
+    var useImageUrl by remember { mutableStateOf(false) }
+    var imageUrl by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val reportedPetRepository: ReportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
@@ -229,59 +233,139 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Image upload section
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(2f)
-                    .border(
-                        width = 1.dp,
-                        color = Color.LightGray,
-                        shape = RoundedCornerShape(24.dp)
-                    )
-                    .clip(RoundedCornerShape(24.dp))
-                    .clickable {
-                        // Launch the image picker when the box is clicked
-                        try {
-                            (context as? MainActivity)?.pickImage()
-                        } catch (e: Exception) {
-                            Toast.makeText(
-                                context,
-                                "Failed to open image picker: ${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    },
-                contentAlignment = Alignment.Center
+            // Image upload section - with clear label
+            Text(
+                text = "Upload Pet Image",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = PrimaryRed
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            // Image source toggle
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                if (selectedImageUri != null) {
-                    // Display the selected image
-                    Image(
-                        painter = rememberAsyncImagePainter(model = selectedImageUri),
-                        contentDescription = "Selected pet image",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    // Display the upload icon
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                androidx.compose.material3.RadioButton(
+                    selected = !useImageUrl,
+                    onClick = { useImageUrl = false }
+                )
+                Text(
+                    text = "Upload Image",
+                    modifier = Modifier
+                        .clickable { useImageUrl = false }
+                        .padding(start = 4.dp)
+                )
+                
+                Spacer(modifier = Modifier.width(16.dp))
+                
+                androidx.compose.material3.RadioButton(
+                    selected = useImageUrl,
+                    onClick = { useImageUrl = true }
+                )
+                Text(
+                    text = "Use Image URL",
+                    modifier = Modifier
+                        .clickable { useImageUrl = true }
+                        .padding(start = 4.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            if (useImageUrl) {
+                // Image URL input
+                OutlinedTextField(
+                    value = imageUrl,
+                    onValueChange = { imageUrl = it },
+                    placeholder = { Text("Enter image URL") },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.LightGray,
+                        focusedBorderColor = PrimaryRed
+                    ),
+                    singleLine = true
+                )
+                
+                if (imageUrl.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(2f)
+                            .border(
+                                width = 1.dp,
+                                color = Color.LightGray,
+                                shape = RoundedCornerShape(24.dp)
+                            )
+                            .clip(RoundedCornerShape(24.dp)),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_image_upload),
-                            contentDescription = "Upload Image",
-                            modifier = Modifier.size(48.dp),
-                            tint = Color.Gray
+                        Image(
+                            painter = rememberAsyncImagePainter(model = imageUrl),
+                            contentDescription = "Pet image from URL",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        Text(
-                            text = "Click to add pet image",
-                            color = Color.Gray,
-                            fontSize = 14.sp
+                    }
+                }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(2f)
+                        .border(
+                            width = 1.dp,
+                            color = Color.LightGray,
+                            shape = RoundedCornerShape(24.dp)
                         )
+                        .clip(RoundedCornerShape(24.dp))
+                        .clickable {
+                            // Launch the image picker when the box is clicked
+                            try {
+                                (context as? MainActivity)?.pickImage()
+                            } catch (e: Exception) {
+                                Toast.makeText(
+                                    context,
+                                    "Failed to open image picker: ${e.message}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (selectedImageUri != null) {
+                        // Display the selected image
+                        Image(
+                            painter = rememberAsyncImagePainter(model = selectedImageUri),
+                            contentDescription = "Selected pet image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        // Display the upload icon
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_image_upload),
+                                contentDescription = "Upload Image",
+                                modifier = Modifier.size(48.dp),
+                                tint = Color.Gray
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "Click to add pet image",
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
                     }
                 }
             }
@@ -313,8 +397,12 @@ fun MissingPetReportScreen(
                             errorMessage = "Please provide your contact number"
                         }
 
-                        selectedImageUri == null -> {
+                        !useImageUrl && selectedImageUri == null -> {
                             errorMessage = "Please select an image of your pet"
+                        }
+                        
+                        useImageUrl && imageUrl.isBlank() -> {
+                            errorMessage = "Please enter an image URL"
                         }
 
                         else -> {
@@ -324,6 +412,8 @@ fun MissingPetReportScreen(
                             // Get current user ID
                             val currentUserId = userRepository.getCurrentUserId()
 
+                            // Determine image source
+                            val finalImageSource = if (useImageUrl) imageUrl else selectedImageUri?.toString() ?: ""
 
                             // Create the reported pet
                             val reportedPet = ReportedPet(
@@ -335,7 +425,7 @@ fun MissingPetReportScreen(
                                 userId = currentUserId, // Add the reporter's ID
                                 isMissing = true, // This is a missing pet report
                                 imageUrl = "dog_snoop", // Using placeholder image for now
-                                imageUri = selectedImageUri?.toString() ?: "" // Store the URI string
+                                imageUri = finalImageSource // Store the URI string or URL
                             )
                             
                             // Save the report

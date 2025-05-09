@@ -71,10 +71,25 @@ fun ProfileScreen(
     val context = LocalContext.current
     val userRepository = PetHoodApplication.getInstance().userRepository
     var currentUser by remember { mutableStateOf(userRepository.getCurrentUser()) }
+    
+    // State variables to track loading and errors
+    var isLoading by remember { mutableStateOf(false) }
+    var loadError by remember { mutableStateOf<String?>(null) }
 
     // Refresh user data when the screen is displayed
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        currentUser = userRepository.getCurrentUser()
+        isLoading = true
+        try {
+            // Force a refresh of user data from Firestore
+            val refreshedUser = userRepository.refreshCurrentUser()
+            currentUser = refreshedUser ?: userRepository.getCurrentUser()
+            loadError = null
+        } catch (e: Exception) {
+            Log.e("ProfileScreen", "Error refreshing user data", e)
+            loadError = "Failed to load profile data: ${e.message}"
+        } finally {
+            isLoading = false
+        }
     }
     
     // State variables for the dialogs
@@ -156,6 +171,28 @@ fun ProfileScreen(
                 color = PrimaryRed,
                 modifier = Modifier.padding(vertical = 16.dp)
             )
+
+            // Show loading indicator or error message if applicable
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator(color = PrimaryRed)
+                    }
+                }
+                loadError != null -> {
+                    Text(
+                        text = loadError!!,
+                        color = Color.Red,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -276,12 +313,26 @@ fun ProfileScreen(
                             color = Color.DarkGray,
                             fontWeight = FontWeight.Bold,
                         )
-                        Text(
-                            text = if (currentUser?.phoneNumber?.isBlank() == true) "Not provided" else currentUser?.phoneNumber
-                                ?: "Not provided",
-                            fontSize = 16.sp,
-                            color = Color.Gray
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (currentUser?.phoneNumber?.isBlank() == true) "Not provided" else currentUser?.phoneNumber
+                                    ?: "Not provided",
+                                fontSize = 16.sp,
+                                color = Color.Gray,
+                                modifier = Modifier.weight(1f)
+                            )
+                            IconButton(onClick = { showPhoneDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Phone",
+                                    tint = PrimaryRed,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        }
                     } else {
                         Text(
                             text = "User information not available",

@@ -5,6 +5,7 @@ import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthSettings
 import com.google.firebase.auth.ktx.auth
+import com.google.firebase.auth.ktx.userProfileChangeRequest
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
@@ -40,10 +41,23 @@ class AuthService {
                     "uid" to authResult.user?.uid,
                     "name" to name,
                     "email" to email,
-                    "phoneNumber" to phoneNumber
+                    "phoneNumber" to phoneNumber,
+                    "profileImageUrl" to "",
+                    "createdAt" to com.google.firebase.Timestamp.now()
                 )
-                authResult.user?.uid?.let {
-                    db.collection("users").document(it).set(user)
+                authResult.user?.uid?.let { uid ->
+                    db.collection("users").document(uid)
+                        .set(user)
+                        .addOnSuccessListener {
+                            // Also update the display name in Firebase Auth
+                            val profileUpdates = userProfileChangeRequest {
+                                displayName = name
+                            }
+                            authResult.user?.updateProfile(profileUpdates)
+                        }
+                        .addOnFailureListener { e ->
+                            android.util.Log.e("AuthService", "Error saving user data to Firestore", e)
+                        }
                 }
             }
     }
