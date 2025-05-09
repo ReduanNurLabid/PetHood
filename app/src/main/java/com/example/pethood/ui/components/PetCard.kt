@@ -69,12 +69,10 @@ fun PetCard(
                     // Handle URL-based images (http/https)
                     val imageModel = when {
                         pet.imageUrl.startsWith("http://") || pet.imageUrl.startsWith("https://") -> {
-                            Log.d("PetCard", "Loading web image: ${pet.imageUrl}")
                             pet.imageUrl
                         }
                         pet.imageUrl.startsWith("content://") || pet.imageUrl.startsWith("file://") -> {
                             try {
-                                Log.d("PetCard", "Loading URI image: ${pet.imageUrl}")
                                 Uri.parse(pet.imageUrl)
                             } catch (e: Exception) {
                                 Log.e("PetCard", "Failed to parse URI: ${e.message}", e)
@@ -88,10 +86,8 @@ fun PetCard(
                                     pet.imageUrl, "drawable", context.packageName
                                 )
                                 if (resourceId != 0) {
-                                    Log.d("PetCard", "Loading resource image: ${pet.imageUrl} (ID: $resourceId)")
                                     resourceId
                                 } else {
-                                    Log.d("PetCard", "No resource found for: ${pet.imageUrl}, using default")
                                     R.drawable.pet_logo
                                 }
                             } catch (e: Exception) {
@@ -156,7 +152,7 @@ fun PetCard(
                                 id = if (pet.gender == PetGender.MALE) R.drawable.ic_male else R.drawable.ic_female
                             ),
                             contentDescription = if (pet.gender == PetGender.MALE) "Male" else "Female",
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                     

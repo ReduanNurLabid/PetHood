@@ -132,13 +132,9 @@ fun AdoptionPetDetailScreen(
                 // Pet image
                 if (!pet?.imageUri.isNullOrEmpty()) {
                     // Try to load from URI string
-                    Log.d("AdoptionPetDetailScreen", "Loading image from URI: ${pet?.imageUri}")
-
-                    // Safely parse URI outside of composable
                     val uri = try {
                         Uri.parse(pet?.imageUri)
                     } catch (e: Exception) {
-                        Log.e("AdoptionPetDetailScreen", "Error parsing URI: ${e.message}", e)
                         null
                     }
 
@@ -151,6 +147,9 @@ fun AdoptionPetDetailScreen(
                                         "AdoptionPetDetailScreen",
                                         "Error loading image: ${it.result.throwable.message}"
                                     )
+                                },
+                                onSuccess = {
+                                    // Removed log statement
                                 }
                             ),
                             contentDescription = pet?.name,

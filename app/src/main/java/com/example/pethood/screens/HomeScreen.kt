@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -96,8 +97,6 @@ fun HomeScreen(
                     .collect { result ->
                         result.fold(
                             onSuccess = { adoptionPets ->
-                                Log.d("HomeScreen", "Loaded ${adoptionPets.size} adoption pets")
-
                                 // Convert AdoptionPet to Pet
                                 allPets = adoptionPets.map { adoptionPet ->
                                     Pet(
@@ -115,13 +114,7 @@ fun HomeScreen(
                                         imageUrl = adoptionPet.imageUri, // Use the URI string directly
                                         contactNumber = adoptionPet.contactNumber,
                                         location = adoptionPet.location
-                                    ).also {
-                                        // Debug log to verify the image URL
-                                        Log.d(
-                                            "HomeScreen",
-                                            "Pet ${it.name} has image URL: ${it.imageUrl}"
-                                        )
-                                    }
+                                    )
                                 }
                             },
                             onFailure = { exception ->
@@ -162,25 +155,17 @@ fun HomeScreen(
 
     // Refresh data when either trigger changes
     LaunchedEffect(combinedRefreshTrigger) {
-        Log.d("HomeScreen", "Refreshing data with trigger: $combinedRefreshTrigger")
         loadAdoptionPets()
     }
 
-    // Check data and log results
+    // Check data
     LaunchedEffect(allPets) {
-        Log.d("HomeScreen", "Loaded ${allPets.size} pets")
         if (allPets.isEmpty()) {
-            Log.d("HomeScreen", "No pets loaded, checking Firestore directly")
             // Try direct check
             scope.launch {
                 try {
                     val snapshot = Firebase.firestore.collection("adoptionPets").get().await()
-                    Log.d(
-                        "HomeScreen",
-                        "Direct Firestore check: ${snapshot.size()} documents found"
-                    )
                     snapshot.documents.forEach { doc ->
-                        Log.d("HomeScreen", "Document: ${doc.id} - ${doc.data}")
                     }
                 } catch (e: Exception) {
                     Log.e("HomeScreen", "Error checking Firestore directly: ${e.message}", e)
@@ -236,7 +221,7 @@ fun HomeScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "PetHood",
+                        text = stringResource(R.string.app_name),
                         color = MaterialTheme.colorScheme.primary,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
@@ -252,7 +237,7 @@ fun HomeScreen(
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Text(
-                            text = "Put Up for Adoption",
+                            text = stringResource(R.string.put_up_for_adoption),
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -327,19 +312,19 @@ fun DisplayPets(
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.pet_logo),
-                    contentDescription = "No pets",
+                    contentDescription = stringResource(R.string.no_pets),
                     modifier = Modifier.size(64.dp),
                     tint = Color.Gray
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "No pets available in this category",
+                    text = stringResource(R.string.no_pets_available),
                     fontSize = 18.sp,
                     color = Color.Gray,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "Try another category or check back later",
+                    text = stringResource(R.string.try_another_category),
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -356,9 +341,6 @@ fun DisplayPets(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val pet = pets[page]
-                
-                // Adding logger to check image URLs
-                Log.d("DisplayPets", "Pet: ${pet.name}, Image URL: ${pet.imageUrl}")
                 
                 Box(
                     modifier = Modifier
@@ -383,12 +365,12 @@ fun DisplayPets(
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_phone),
-                            contentDescription = "Contact",
+                            contentDescription = stringResource(R.string.contact),
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Contact Owner",
+                            text = stringResource(R.string.contact_owner),
                             fontWeight = FontWeight.Bold
                         )
                     }

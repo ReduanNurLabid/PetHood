@@ -16,4 +16,44 @@
     <string name="full_name">Full Name</string>
     <string name="welcome_to_pethood">Welcome to PetHood!</string>
     <string name="home_under_construction">Home screen is under construction.\nWe\'ll be implementing the main features soon.</string>
+    <!-- Image selection -->
+    <string name="image_source">Image Source:</string>
+    <string name="upload_image">Upload Image</string>
+    <string name="use_image_url">Use Image URL</string>
+    <string name="image_url">Image URL</string>
+    <string name="image_url_hint">Enter a valid image URL (e.g., https://example.com/image.jpg)</string>
+    <string name="tap_to_upload">Tap to upload pet image</string>
+    <string name="enter_valid_image_url">Enter a valid image URL (e.g., https://example.com/image.jpg)</string>
+    <string name="pet_image">Pet Image</string>
+    <string name="pet_image_from_url">Pet Image from URL</string>
+    <string name="tap_to_upload_pet_image">Tap to upload pet image</string>
+    <string name="expand_dropdown">Expand dropdown</string>
+
+    <!-- Form messages -->
+    <string name="fill_required_fields">Please fill all required fields</string>
+    <string name="please_fill_all_required_fields">Please fill all required fields</string>
+    <string name="put_up_for_adoption">Put Up for Adoption</string>
+    <string name="put_pet_up_for_adoption">Put Pet Up for Adoption</string>
+    <string name="adoption_success">Pet successfully put up for adoption!</string>
+    <string name="pet_successfully_put_up_for_adoption">Pet successfully put up for adoption!</string>
+    <string name="error_creating_adoption">Error creating adoption: %1$s</string>
+    <string name="error_selecting_image">Error selecting image. Please try again.</string>
+    <string name="contact_owner">Contact Owner</string>
+    <!-- Pet info -->
+    <string name="pet_name">Pet Name</string>
+    <string name="pet_category">Pet Category</string>
+    <string name="pet_breed">Pet Breed/Type</string>
+    <string name="pet_breed_type">Pet Breed/Type</string>
+    <string name="pet_location">Location</string>
+    <string name="location">Location</string>
+    <string name="pet_contact">Contact Number</string>
+    <string name="contact_number">Contact Number</string>
+    <string name="pet_description">Description</string>
+    <string name="description">Description</string>
+    <string name="location_format">Location: %1$s</string>
+    <!-- Home screen -->
+    <string name="no_pets">No pets</string>
+    <string name="no_pets_available">No pets available in this category</string>
+    <string name="try_another_category">Try another category or check back later</string>
+    <string name="contact">Contact</string>
 </resources>

@@ -10,7 +10,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -49,6 +48,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -113,7 +113,13 @@ fun AdoptionFormScreen(
             petImageUri = savedUri
         }
     }
-    
+
+    // Pre-load string resources
+    val successMessage = stringResource(R.string.pet_successfully_put_up_for_adoption)
+    val errorMessage = stringResource(R.string.error_creating_adoption)
+    val requiredFieldsMessage = stringResource(R.string.please_fill_all_required_fields)
+    val errorSelectingImageMessage = stringResource(R.string.error_selecting_image)
+
     Scaffold(
         bottomBar = {
             BottomNavigationBar(
@@ -146,7 +152,7 @@ fun AdoptionFormScreen(
                 }
                 
                 Text(
-                    text = "Put Pet Up for Adoption",
+                    text = stringResource(R.string.put_pet_up_for_adoption),
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.align(Alignment.TopCenter)
@@ -158,7 +164,7 @@ fun AdoptionFormScreen(
             // Image source toggle
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Image Source:",
+                    text = stringResource(R.string.image_source),
                     fontWeight = FontWeight.Medium,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
@@ -173,7 +179,7 @@ fun AdoptionFormScreen(
                         onClick = { useImageUrl = false }
                     )
                     Text(
-                        text = "Upload Image",
+                        text = stringResource(R.string.upload_image),
                         modifier = Modifier
                             .clickable { useImageUrl = false }
                             .padding(start = 4.dp)
@@ -186,7 +192,7 @@ fun AdoptionFormScreen(
                         onClick = { useImageUrl = true }
                     )
                     Text(
-                        text = "Use Image URL",
+                        text = stringResource(R.string.use_image_url),
                         modifier = Modifier
                             .clickable { useImageUrl = true }
                             .padding(start = 4.dp)
@@ -202,13 +208,13 @@ fun AdoptionFormScreen(
                 OutlinedTextField(
                     value = imageUrl,
                     onValueChange = { imageUrl = it },
-                    label = { Text("Image URL") },
+                    label = { Text(stringResource(R.string.image_url)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
                 
                 Text(
-                    text = "Enter a valid image URL (e.g., https://example.com/image.jpg)",
+                    text = stringResource(R.string.enter_valid_image_url),
                     color = Color.Gray,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(start = 4.dp, top = 4.dp)
@@ -220,13 +226,16 @@ fun AdoptionFormScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(200.dp)
-                            .background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .background(
+                                Color.LightGray.copy(alpha = 0.3f),
+                                RoundedCornerShape(8.dp)
+                            )
                             .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
                             painter = rememberAsyncImagePainter(model = imageUrl),
-                            contentDescription = "Pet Image from URL",
+                            contentDescription = stringResource(R.string.pet_image_from_url),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -244,14 +253,9 @@ fun AdoptionFormScreen(
                             try {
                                 launcher.launch("image/*")
                             } catch (e: Exception) {
-                                android.util.Log.e(
-                                    "AdoptionFormScreen",
-                                    "Error launching image picker: ${e.message}",
-                                    e
-                                )
                                 Toast.makeText(
                                     context,
-                                    "Error selecting image. Please try again.",
+                                    errorSelectingImageMessage,
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
@@ -261,7 +265,7 @@ fun AdoptionFormScreen(
                     if (petImageUri != null) {
                         Image(
                             painter = rememberAsyncImagePainter(model = petImageUri),
-                            contentDescription = "Pet Image",
+                            contentDescription = stringResource(R.string.pet_image),
                             modifier = Modifier.fillMaxSize(),
                             contentScale = ContentScale.Crop
                         )
@@ -269,12 +273,12 @@ fun AdoptionFormScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Icon(
                                 painter = painterResource(id = R.drawable.pet_logo),
-                                contentDescription = "Upload Image",
+                                contentDescription = stringResource(R.string.upload_image),
                                 modifier = Modifier.size(64.dp),
                                 tint = Color.Gray
                             )
                             Text(
-                                text = "Tap to upload pet image",
+                                text = stringResource(R.string.tap_to_upload_pet_image),
                                 color = Color.Gray,
                                 fontSize = 16.sp
                             )
@@ -289,7 +293,7 @@ fun AdoptionFormScreen(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text("Pet Name") },
+                label = { Text(stringResource(R.string.pet_name)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -303,12 +307,12 @@ fun AdoptionFormScreen(
                 OutlinedTextField(
                     value = petCategory,
                     onValueChange = { /* Read-only field */ },
-                    label = { Text("Pet Category") },
+                    label = { Text(stringResource(R.string.pet_category)) },
                     trailingIcon = {
                         IconButton(onClick = { expanded = !expanded }) {
                             Icon(
                                 imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                contentDescription = "Expand dropdown"
+                                contentDescription = stringResource(R.string.expand_dropdown)
                             )
                         }
                     },
@@ -346,7 +350,7 @@ fun AdoptionFormScreen(
             OutlinedTextField(
                 value = petType,
                 onValueChange = { petType = it },
-                label = { Text("Pet Breed/Type") },
+                label = { Text(stringResource(R.string.pet_breed_type)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -357,7 +361,7 @@ fun AdoptionFormScreen(
             OutlinedTextField(
                 value = location,
                 onValueChange = { location = it },
-                label = { Text("Location") },
+                label = { Text(stringResource(R.string.location)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -368,7 +372,7 @@ fun AdoptionFormScreen(
             OutlinedTextField(
                 value = contactNumber,
                 onValueChange = { contactNumber = it },
-                label = { Text("Contact Number") },
+                label = { Text(stringResource(R.string.contact_number)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
@@ -379,7 +383,7 @@ fun AdoptionFormScreen(
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Description") },
+                label = { Text(stringResource(R.string.description)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(150.dp),
@@ -395,24 +399,6 @@ fun AdoptionFormScreen(
                         try {
                             val userId = PetHoodApplication.getInstance().userRepository.getCurrentUserId()
                             val imageUriString = petImageUri?.toString() ?: ""
-                            android.util.Log.d("AdoptionFormScreen", "Using image URI for submission: $imageUriString")
-
-                            petImageUri?.let {
-                                android.util.Log.d(
-                                    "AdoptionFormScreen",
-                                    "Image URI scheme: ${it.scheme}"
-                                )
-                                android.util.Log.d(
-                                    "AdoptionFormScreen",
-                                    "Image URI path: ${it.path}"
-                                )
-                                android.util.Log.d(
-                                    "AdoptionFormScreen",
-                                    "Image URI exists: ${
-                                        context.contentResolver.openInputStream(it)?.close()
-                                    }"
-                                )
-                            }
 
                             val tempId = "temp-" + UUID.randomUUID().toString()
 
@@ -442,26 +428,17 @@ fun AdoptionFormScreen(
                                         .collect { result ->
                                             result.fold(
                                                 onSuccess = {
-                                                    android.util.Log.d(
-                                                        "AdoptionFormScreen",
-                                                        "Pet adoption submission successful"
-                                                    )
                                                     Toast.makeText(
                                                         context,
-                                                        "Pet successfully put up for adoption!",
+                                                        successMessage,
                                                         Toast.LENGTH_LONG
                                                     ).show()
                                                     submitSuccess = true
                                                 },
                                                 onFailure = { exception ->
-                                                    android.util.Log.e(
-                                                        "AdoptionFormScreen",
-                                                        "Error submitting pet: ${exception.message}",
-                                                        exception
-                                                    )
                                                     Toast.makeText(
                                                         context,
-                                                        "Error creating adoption: ${exception.message}",
+                                                        errorMessage + exception.message,
                                                         Toast.LENGTH_LONG
                                                     ).show()
                                                 }
@@ -470,18 +447,22 @@ fun AdoptionFormScreen(
                                 } catch (e: Exception) {
                                     Toast.makeText(
                                         context,
-                                        "Error creating adoption: ${e.message}",
+                                        errorMessage + e.message,
                                         Toast.LENGTH_LONG
                                     ).show()
                                 }
                             }
                         } catch (e: Exception) {
-                            Toast.makeText(context, "Error creating adoption: ${e.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(
+                                context,
+                                errorMessage + e.message,
+                                Toast.LENGTH_LONG
+                            ).show()
                         }
                     } else {
                         Toast.makeText(
                             context,
-                            "Please fill all required fields",
+                            requiredFieldsMessage,
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -495,7 +476,7 @@ fun AdoptionFormScreen(
                 )
             ) {
                 Text(
-                    text = "Put Up for Adoption",
+                    text = stringResource(R.string.put_up_for_adoption),
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
