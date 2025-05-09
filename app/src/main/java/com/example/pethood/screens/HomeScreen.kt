@@ -5,6 +5,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,9 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -343,17 +346,75 @@ fun DisplayPets(
             }
         }
     } else {
-        VerticalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxSize()
-        ) { page ->
-            val pet = pets[page]
-            PetCard(
-                pet = pet,
-                onPetClick = onPetClick,
-                onFavoriteClick = { /* Do nothing for now */ },
-                modifier = Modifier.fillMaxWidth()
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 8.dp)
+        ) {
+            VerticalPager(
+                state = pagerState,
+                modifier = Modifier.fillMaxSize()
+            ) { page ->
+                val pet = pets[page]
+                
+                // Adding logger to check image URLs
+                Log.d("DisplayPets", "Pet: ${pet.name}, Image URL: ${pet.imageUrl}")
+                
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 16.dp)
+                ) {
+                    PetCard(
+                        pet = pet,
+                        onPetClick = { onPetClick(pet) },
+                        onFavoriteClick = { /* Do nothing for now */ },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    
+                    // Add contact button over the card
+                    Button(
+                        onClick = { onContactClick(pet) },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 24.dp),
+                        shape = RoundedCornerShape(16.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF9C27B0))
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_phone),
+                            contentDescription = "Contact",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Contact Owner",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+            
+            // Add page indicators
+            Row(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                for (i in pets.indices) {
+                    val isSelected = i == pagerState.currentPage
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .size(if (isSelected) 10.dp else 8.dp)
+                            .background(
+                                if (isSelected) Color(0xFF9C27B0) else Color.Gray.copy(alpha = 0.5f),
+                                CircleShape
+                            )
+                    )
+                }
+            }
         }
     }
 }

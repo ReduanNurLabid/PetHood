@@ -44,76 +44,70 @@ fun PetCard(
 ) {
     Card(
         modifier = modifier
-            .width(160.dp)
-            .padding(8.dp)
+            .fillMaxSize()
+            .padding(16.dp)
             .clickable { onPetClick(pet) },
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Box(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxSize()
         ) {
-            Column {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
                 // Pet Image
                 Box(
                     modifier = Modifier
-                        .height(120.dp)
+                        .weight(0.7f)
                         .fillMaxWidth()
                 ) {
                     // Try loading image - could be from a drawable resource name or a URI string
                     val context = LocalContext.current
 
-                    // Parse URI outside of composable functions
-                    val uri =
-                        if (pet.imageUrl.startsWith("content://") || pet.imageUrl.startsWith("file://")) {
+                    // Handle URL-based images (http/https)
+                    val imageModel = when {
+                        pet.imageUrl.startsWith("http://") || pet.imageUrl.startsWith("https://") -> {
+                            Log.d("PetCard", "Loading web image: ${pet.imageUrl}")
+                            pet.imageUrl
+                        }
+                        pet.imageUrl.startsWith("content://") || pet.imageUrl.startsWith("file://") -> {
                             try {
+                                Log.d("PetCard", "Loading URI image: ${pet.imageUrl}")
                                 Uri.parse(pet.imageUrl)
                             } catch (e: Exception) {
                                 Log.e("PetCard", "Failed to parse URI: ${e.message}", e)
-                                null
+                                R.drawable.pet_logo
                             }
-                        } else null
-
-                    // Resource ID check outside of composable functions
-                    val resourceId = if (uri == null) {
-                        try {
-                            context.resources.getIdentifier(
-                                pet.imageUrl, "drawable", context.packageName
-                            )
-                        } catch (e: Exception) {
-                            Log.e("PetCard", "Failed to get resource ID: ${e.message}", e)
-                            0
                         }
-                    } else 0
-
-                    // Choose the appropriate painter based on our checks
-                    val painter = when {
-                        uri != null -> {
-                            // Load from URI using Coil
-                            rememberAsyncImagePainter(
-                                model = uri,
-                                onError = {
-                                    Log.e(
-                                        "PetCard",
-                                        "Error loading image from URI: ${it.result.throwable.message}"
-                                    )
-                                }
-                            )
-                        }
-                        resourceId != 0 -> {
-                            painterResource(id = resourceId)
-                        }
-
                         else -> {
-                            // Fallback
-                            Log.d("PetCard", "Using fallback image for pet: ${pet.name}")
-                            painterResource(id = R.drawable.pet_logo)
+                            // Try to find a drawable resource with this name
+                            try {
+                                val resourceId = context.resources.getIdentifier(
+                                    pet.imageUrl, "drawable", context.packageName
+                                )
+                                if (resourceId != 0) {
+                                    Log.d("PetCard", "Loading resource image: ${pet.imageUrl} (ID: $resourceId)")
+                                    resourceId
+                                } else {
+                                    Log.d("PetCard", "No resource found for: ${pet.imageUrl}, using default")
+                                    R.drawable.pet_logo
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PetCard", "Error resolving resource: ${e.message}", e)
+                                R.drawable.pet_logo
+                            }
                         }
                     }
 
                     Image(
-                        painter = painter,
+                        painter = rememberAsyncImagePainter(
+                            model = imageModel,
+                            onError = {
+                                Log.e("PetCard", "Error loading image: ${it.result.throwable.message}")
+                            }
+                        ),
                         contentDescription = "${pet.name}, ${pet.breed}",
                         modifier = Modifier
                             .fillMaxSize()
@@ -128,17 +122,20 @@ fun PetCard(
                         ),
                         contentDescription = if (pet.isFavorite) "Remove from favorites" else "Add to favorites",
                         modifier = Modifier
-                            .padding(8.dp)
-                            .size(24.dp)
+                            .padding(16.dp)
+                            .size(32.dp)
                             .align(Alignment.TopEnd)
-                            .clickable { onFavoriteClick(pet) }
+                            .clickable { onFavoriteClick(pet) },
+                        tint = if (pet.isFavorite) Color.Red else Color.White
                     )
                 }
                 
                 // Pet information
                 Column(
                     modifier = Modifier
-                        .padding(8.dp)
+                        .weight(0.3f)
+                        .fillMaxWidth()
+                        .padding(16.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,

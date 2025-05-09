@@ -10,12 +10,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,6 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -95,6 +98,8 @@ fun AdoptionFormScreen(
     var location by remember { mutableStateOf("") }
     
     var petImageUri by remember { mutableStateOf<Uri?>(null) }
+    var imageUrl by remember { mutableStateOf("") }
+    var useImageUrl by remember { mutableStateOf(false) }
     
     var expanded by remember { mutableStateOf(false) }
     val categories = listOf("Cat", "Dog", "Bird")
@@ -150,51 +155,130 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Pet Image
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp)
-                    .background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                    .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                    .clickable {
-                        try {
-                            launcher.launch("image/*")
-                        } catch (e: Exception) {
-                            android.util.Log.e(
-                                "AdoptionFormScreen",
-                                "Error launching image picker: ${e.message}",
-                                e
-                            )
-                            Toast.makeText(
-                                context,
-                                "Error selecting image. Please try again.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                if (petImageUri != null) {
-                    Image(
-                        painter = rememberAsyncImagePainter(model = petImageUri),
-                        contentDescription = "Pet Image",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+            // Image source toggle
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Image Source:",
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                androidx.compose.foundation.layout.Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    RadioButton(
+                        selected = !useImageUrl,
+                        onClick = { useImageUrl = false }
                     )
-                } else {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.pet_logo),
-                            contentDescription = "Upload Image",
-                            modifier = Modifier.size(64.dp),
-                            tint = Color.Gray
+                    Text(
+                        text = "Upload Image",
+                        modifier = Modifier
+                            .clickable { useImageUrl = false }
+                            .padding(start = 4.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.width(16.dp))
+                    
+                    RadioButton(
+                        selected = useImageUrl,
+                        onClick = { useImageUrl = true }
+                    )
+                    Text(
+                        text = "Use Image URL",
+                        modifier = Modifier
+                            .clickable { useImageUrl = true }
+                            .padding(start = 4.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Image selection section based on toggle
+            if (useImageUrl) {
+                // Image URL input
+                OutlinedTextField(
+                    value = imageUrl,
+                    onValueChange = { imageUrl = it },
+                    label = { Text("Image URL") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                
+                Text(
+                    text = "Enter a valid image URL (e.g., https://example.com/image.jpg)",
+                    color = Color.Gray,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                )
+                
+                if (imageUrl.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
+                            .background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(8.dp)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = rememberAsyncImagePainter(model = imageUrl),
+                            contentDescription = "Pet Image from URL",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
-                        Text(
-                            text = "Tap to upload pet image",
-                            color = Color.Gray,
-                            fontSize = 16.sp
+                    }
+                }
+            } else {
+                // Pet Image Upload
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .background(Color.LightGray.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                        .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                        .clickable {
+                            try {
+                                launcher.launch("image/*")
+                            } catch (e: Exception) {
+                                android.util.Log.e(
+                                    "AdoptionFormScreen",
+                                    "Error launching image picker: ${e.message}",
+                                    e
+                                )
+                                Toast.makeText(
+                                    context,
+                                    "Error selecting image. Please try again.",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (petImageUri != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(model = petImageUri),
+                            contentDescription = "Pet Image",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
                         )
+                    } else {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.pet_logo),
+                                contentDescription = "Upload Image",
+                                modifier = Modifier.size(64.dp),
+                                tint = Color.Gray
+                            )
+                            Text(
+                                text = "Tap to upload pet image",
+                                color = Color.Gray,
+                                fontSize = 16.sp
+                            )
+                        }
                     }
                 }
             }
@@ -332,6 +416,13 @@ fun AdoptionFormScreen(
 
                             val tempId = "temp-" + UUID.randomUUID().toString()
 
+                            // Determine which image source to use
+                            val finalImageSource = if (useImageUrl && imageUrl.isNotBlank()) {
+                                imageUrl
+                            } else {
+                                imageUriString
+                            }
+
                             val newPet = AdoptionPet(
                                 id = tempId,
                                 name = name,
@@ -340,7 +431,7 @@ fun AdoptionFormScreen(
                                 location = location,
                                 description = description,
                                 contactNumber = contactNumber,
-                                imageUri = imageUriString,
+                                imageUri = finalImageSource,
                                 userId = userId,
                                 date = Date()
                             )
