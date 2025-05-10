@@ -260,6 +260,30 @@ class AdoptionPetRepository(context: Context) {
     }
     
     /**
+     * Mark an adoption pet as adopted
+     */
+    suspend fun markAsAdopted(petId: String): Flow<Result<Unit>> = flow {
+        try {
+            // Update the pet's status in Firestore
+            petsCollection.document(petId)
+                .update("isAdopted", true)
+                .await()
+            
+            // Update in local cache
+            val petIndex = adoptionPets.indexOfFirst { it.id == petId }
+            if (petIndex >= 0) {
+                val updatedPet = adoptionPets[petIndex].copy(isAdopted = true)
+                adoptionPets[petIndex] = updatedPet
+            }
+            
+            emit(Result.success(Unit))
+        } catch (e: Exception) {
+            Log.e("AdoptionPetRepository", "Error marking pet as adopted: ${e.message}", e)
+            emit(Result.failure(e))
+        }
+    }
+    
+    /**
      * Add sample pets for demonstration
      */
     private fun addSamplePets() {

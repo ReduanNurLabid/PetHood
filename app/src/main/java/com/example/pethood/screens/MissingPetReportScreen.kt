@@ -411,6 +411,10 @@ fun MissingPetReportScreen(
 
                             // Get current user ID
                             val currentUserId = userRepository.getCurrentUserId()
+                            // Get current user details
+                            val currentUser = userRepository.getCurrentUser()
+                            val reporterName = currentUser?.name ?: ""
+                            val reporterEmail = currentUser?.email ?: ""
 
                             // Determine image source
                             val finalImageSource = if (useImageUrl) imageUrl else selectedImageUri?.toString() ?: ""
@@ -419,10 +423,12 @@ fun MissingPetReportScreen(
                             val reportedPet = ReportedPet(
                                 name = petName,
                                 type = petType,
-                                lastSeen = lastSeen ,
+                                lastSeen = lastSeen,
                                 description = petDescription,
                                 contactNumber = contactNumber,
                                 userId = currentUserId, // Add the reporter's ID
+                                reporterName = reporterName, // Add reporter's name
+                                reporterEmail = reporterEmail, // Add reporter's email
                                 isMissing = true, // This is a missing pet report
                                 imageUrl = "dog_snoop", // Using placeholder image for now
                                 imageUri = finalImageSource // Store the URI string or URL

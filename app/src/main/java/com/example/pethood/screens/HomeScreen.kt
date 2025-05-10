@@ -73,23 +73,19 @@ fun HomeScreen(
     onPetClick: (Pet) -> Unit = {},
     onPutUpForAdoptionClick: () -> Unit = {},
     onAdoptionPetClick: (String) -> Unit = {},
-    refreshTrigger: Int = 0 // External refresh trigger
+    refreshTrigger: Int = 0
 ) {
     val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf(PetCategory.DOG) }
+    var selectedCategory by remember { mutableStateOf(PetCategory.ALL) }
     val scope = rememberCoroutineScope()
 
-    // Store pets in state
     var allPets by remember { mutableStateOf<List<Pet>>(emptyList()) }
 
-    // Add a refresh trigger to reload data when needed
     var internalRefreshTrigger by remember { mutableStateOf(0) }
 
-    // Combine external and internal refresh triggers
     val combinedRefreshTrigger = refreshTrigger + internalRefreshTrigger
 
-    // Function to load adoption pets
     fun loadAdoptionPets() {
         scope.launch {
             try {
@@ -139,12 +135,9 @@ fun HomeScreen(
         }
     }
 
-    // Load data when screen is first created and force refresh when screen appears
     DisposableEffect(Unit) {
-        // Force an immediate data refresh when the screen is created
         loadAdoptionPets()
 
-        // Schedule another refresh after a short delay to ensure data is loaded
         scope.launch {
             delay(300)
             internalRefreshTrigger++
@@ -153,15 +146,12 @@ fun HomeScreen(
         onDispose { }
     }
 
-    // Refresh data when either trigger changes
     LaunchedEffect(combinedRefreshTrigger) {
         loadAdoptionPets()
     }
 
-    // Check data
     LaunchedEffect(allPets) {
         if (allPets.isEmpty()) {
-            // Try direct check
             scope.launch {
                 try {
                     val snapshot = Firebase.firestore.collection("adoptionPets").get().await()
@@ -180,7 +170,8 @@ fun HomeScreen(
             val matchesCategory = when (selectedCategory) {
                 PetCategory.DOG -> pet.category == PetCategory.DOG
                 PetCategory.CAT -> pet.category == PetCategory.CAT
-                else -> pet.category == PetCategory.OTHER
+                PetCategory.OTHER -> pet.category == PetCategory.OTHER
+                PetCategory.ALL -> true //
             }
             val matchesSearchQuery = searchQuery.isEmpty() ||
                     pet.name.contains(searchQuery, ignoreCase = true) ||
@@ -228,7 +219,6 @@ fun HomeScreen(
                         modifier = Modifier.weight(1f)
                     )
                     
-                    // Button to put a pet up for adoption
                     Button(
                         onClick = onPutUpForAdoptionClick,
                         colors = ButtonDefaults.buttonColors(
@@ -244,13 +234,11 @@ fun HomeScreen(
                     }
                 }
 
-                // Search bar
                 SearchBar(
                     query = searchQuery,
                     onQueryChange = { searchQuery = it }
                 )
 
-                // Categories
                 CategorySelector(
                     selectedCategory = selectedCategory,
                     onCategorySelected = { selectedCategory = it }
@@ -314,19 +302,21 @@ fun DisplayPets(
                     painter = painterResource(id = R.drawable.pet_logo),
                     contentDescription = stringResource(R.string.no_pets),
                     modifier = Modifier.size(64.dp),
-                    tint = Color.Gray
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = stringResource(R.string.no_pets_available),
                     fontSize = 18.sp,
-                    color = Color.Gray,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = stringResource(R.string.try_another_category),
+                    text = if (category == PetCategory.ALL) 
+                           "There are currently no pets available for adoption" 
+                           else stringResource(R.string.try_another_category),
                     fontSize = 14.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
         }
@@ -366,12 +356,14 @@ fun DisplayPets(
                         Icon(
                             painter = painterResource(id = R.drawable.ic_phone),
                             contentDescription = stringResource(R.string.contact),
-                            modifier = Modifier.size(16.dp)
+                            modifier = Modifier.size(16.dp),
+                            tint = Color.White // Ensure icon is visible
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(R.string.contact_owner),
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White // Ensure text is visible
                         )
                     }
                 }
@@ -391,7 +383,7 @@ fun DisplayPets(
                             .padding(horizontal = 4.dp)
                             .size(if (isSelected) 10.dp else 8.dp)
                             .background(
-                                if (isSelected) Color(0xFF9C27B0) else Color.Gray.copy(alpha = 0.5f),
+                                if (isSelected) Color(0xFF9C27B0) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                 CircleShape
                             )
                     )

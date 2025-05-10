@@ -137,11 +137,31 @@ class ReportedPetRepository() {
 
     // Try to find a pet across both collections
     suspend fun getPetById(id: String): ReportedPet? {
-        val missingPet = getPetById(id, true)
-        if (missingPet != null) {
-            return missingPet
+        // First try to find in the missing pets collection
+        try {
+            val missingPetDoc = missingPetsCollection.document(id).get().await()
+            if (missingPetDoc.exists()) {
+                // Found in missing pets collection, make sure isMissing is true
+                val pet = missingPetDoc.toObject(ReportedPet::class.java)
+                return pet?.copy(isMissing = true)
+            }
+        } catch (e: Exception) {
+            Log.e("ReportedPetRepository", "Error looking up missing pet: ${e.message}", e)
         }
-        return getPetById(id, false)
+        
+        // If not found, try the found pets collection
+        try {
+            val foundPetDoc = foundPetsCollection.document(id).get().await()
+            if (foundPetDoc.exists()) {
+                // Found in found pets collection, make sure isMissing is false
+                val pet = foundPetDoc.toObject(ReportedPet::class.java)
+                return pet?.copy(isMissing = false)
+            }
+        } catch (e: Exception) {
+            Log.e("ReportedPetRepository", "Error looking up found pet: ${e.message}", e)
+        }
+        
+        return null
     }
 
     // Alias method to maintain compatibility with existing code

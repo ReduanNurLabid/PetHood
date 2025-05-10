@@ -15,6 +15,9 @@ data class AdoptionPet(
     val contactNumber: String = "",
     val petId: String = "", //pet added to the app
     val userId: String = "", // ID of the user who put the pet up for adoption
+    val ownerName: String = "", // Name of the person offering the pet for adoption
+    val ownerEmail: String = "", // Email of the person offering the pet for adoption
     val date: Date = Date(),
-    val imageUri: String = "" // URI of the pet's image
+    val imageUri: String = "", // URI of the pet's image
+    val isAdopted: Boolean = false // Whether the pet has been adopted
 )

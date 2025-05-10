@@ -165,11 +165,9 @@ fun AppNavigation(
                     navController.navigate(destination.route)
                 },
                 onPetClick = { reportedPet ->
-                    navController.navigate(
-                        Screen.ReportedPetDetail.createRoute(
-                            id = reportedPet.id
-                        )
-                    )
+                    navController.navigate(Screen.ReportedPetDetail.createRoute(id = reportedPet.id)) {
+                        launchSingleTop = true
+                    }
                 }
             )
         }

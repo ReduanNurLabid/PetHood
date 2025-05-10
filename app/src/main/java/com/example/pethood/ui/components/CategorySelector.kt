@@ -27,6 +27,13 @@ fun CategorySelector(
         modifier = Modifier.padding(vertical = 8.dp)
     ) {
         PetCategoryTab(
+            category = PetCategory.ALL,
+            isSelected = selectedCategory == PetCategory.ALL,
+            color = Color(0xFF2196F3), // Blue color for ALL category
+            onClick = { onCategorySelected(PetCategory.ALL) }
+        )
+        
+        PetCategoryTab(
             category = PetCategory.DOG,
             isSelected = selectedCategory == PetCategory.DOG,
             color = Color(0xFFFF415B),
@@ -67,6 +74,7 @@ fun PetCategoryTab(
     ) {
         Text(
             text = when (category) {
+                PetCategory.ALL -> "All Pets"
                 PetCategory.DOG -> "Dogs"
                 PetCategory.CAT -> "Cats"
                 PetCategory.OTHER -> "Birds"

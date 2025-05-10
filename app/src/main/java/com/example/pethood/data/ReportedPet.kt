@@ -8,11 +8,13 @@ data class ReportedPet(
     val type: String = "",
     val lastSeen: String = "",
     val description: String = "",
-    val imageUrl: String = "", // For drawable resources
-    val imageUri: String = "", // For user-uploaded images (URI string)
+    val imageUrl: String = "", 
+    val imageUri: String = "", 
     val userId: String = "",
     val petId: String = "",
-    val contactNumber: String = "", // Contact number for the reporter
-    val isMissing: Boolean = false, // true if missing, false if found
-    val date: Date = Date() // reported date
+    val contactNumber: String = "", 
+    val reporterName: String = "", 
+    val reporterEmail: String = "", 
+    val isMissing: Boolean = false, 
+    val date: Date = Date() 
 )

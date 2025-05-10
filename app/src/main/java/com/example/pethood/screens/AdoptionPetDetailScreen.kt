@@ -1,5 +1,10 @@
 package com.example.pethood.screens
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Phone
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
@@ -19,6 +24,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,6 +37,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,6 +54,8 @@ import com.example.pethood.R
 import com.example.pethood.data.PetCategory
 import com.example.pethood.navigation.Screen
 import com.example.pethood.ui.components.BottomNavigationBar
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,11 +70,22 @@ fun AdoptionPetDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
 
     val adoptionPetRepository = PetHoodApplication.getInstance().adoptionPetRepository
+    val userRepository = PetHoodApplication.getInstance().userRepository
+    val currentUserId = userRepository.getCurrentUserId()
+    val coroutineScope = rememberCoroutineScope()
+    
+    // Check if current user is the owner
+    var isCurrentUserOwner by remember { mutableStateOf(false) }
+    
+    // Dialog states
+    var showAdoptedConfirmDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(petId) {
         adoptionPetRepository.getAdoptionPetById(petId).collect { result ->
             result.onSuccess { adoptionPet ->
                 pet = adoptionPet
+                isCurrentUserOwner = adoptionPet.userId == currentUserId
             }.onFailure {
                 // Optionally handle error
             }
@@ -271,48 +291,313 @@ fun AdoptionPetDetailScreen(
                 
                 Spacer(modifier = Modifier.height(32.dp))
                 
-                // Contact button
-                Button(
-                    onClick = {
-                        val contactNumber = pet?.contactNumber ?: ""
-                        if (contactNumber.isNotEmpty()) {
-                            val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
-                                data = android.net.Uri.parse("tel:$contactNumber")
+                // Owner information section
+                androidx.compose.material3.Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = Color(0xFFF5F5F5)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Owner Information",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.DarkGray
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        if (pet?.ownerName?.isNotBlank() == true) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = "Owner name",
+                                    tint = categoryColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = pet?.ownerName ?: "",
+                                    fontSize = 15.sp,
+                                    color = Color.DarkGray
+                                )
                             }
-                            try {
-                                context.startActivity(intent)
-                            } catch (e: Exception) {
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        
+                        if (pet?.ownerEmail?.isNotBlank() == true) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Email,
+                                    contentDescription = "Owner email",
+                                    tint = categoryColor,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = pet?.ownerEmail ?: "",
+                                    fontSize = 15.sp,
+                                    color = Color.DarkGray
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Phone,
+                                contentDescription = "Contact number",
+                                tint = categoryColor,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = pet?.contactNumber?.ifEmpty { "No contact number provided" }
+                                    ?: "No contact number provided",
+                                fontSize = 15.sp,
+                                color = Color.DarkGray
+                            )
+                        }
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Management buttons for the owner
+                if (isCurrentUserOwner) {
+                    // Show adoption status if the pet is already adopted
+                    if (pet?.isAdopted == true) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "This pet has been marked as adopted",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF4CAF50)
+                            )
+                        }
+                    } else {
+                        // Mark as adopted button
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = { showAdoptedConfirmDialog = true },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, Color(0xFF4CAF50)), // Green border
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFF4CAF50)
+                            )
+                        ) {
+                            Text(
+                                text = "Mark as Adopted",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Delete listing button
+                    androidx.compose.material3.OutlinedButton(
+                        onClick = { showDeleteConfirmDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, Color.Red),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = Color.Red
+                        )
+                    ) {
+                        Text(
+                            text = "Delete Listing",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Contact button - only show for non-owners
+                if (!isCurrentUserOwner) {
+                    Button(
+                        onClick = {
+                            val contactNumber = pet?.contactNumber ?: ""
+                            if (contactNumber.isNotEmpty()) {
+                                val intent = android.content.Intent(android.content.Intent.ACTION_DIAL).apply {
+                                    data = android.net.Uri.parse("tel:$contactNumber")
+                                }
+                                try {
+                                    context.startActivity(intent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(
+                                        context,
+                                        "Could not open phone dialer",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            } else {
                                 Toast.makeText(
                                     context,
-                                    "Could not open phone dialer",
+                                    "No contact number provided",
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
-                        } else {
-                            Toast.makeText(
-                                context,
-                                "No contact number provided",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = categoryColor
-                    )
-                ) {
-                    Text(
-                        text = "Contact Owner",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(28.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = categoryColor
+                        )
+                    ) {
+                        Text(
+                            text = "Contact Owner",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
+    }
+    
+    // Confirm marking as adopted dialog
+    if (showAdoptedConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showAdoptedConfirmDialog = false },
+            title = { Text("Mark as Adopted") },
+            text = { 
+                Text("Are you sure this pet has been adopted? This will mark the pet as no longer available for adoption.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            pet?.id?.let { id ->
+                                adoptionPetRepository.markAsAdopted(id).collect { result ->
+                                    result.onSuccess {
+                                        Toast.makeText(
+                                            context,
+                                            "Pet marked as adopted!",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        // Refresh pet data
+                                        adoptionPetRepository.getAdoptionPetById(petId).collect { petResult ->
+                                            petResult.onSuccess { updatedPet ->
+                                                pet = updatedPet
+                                            }
+                                        }
+                                    }.onFailure { error ->
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to mark as adopted: ${error.message}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                }
+                            }
+                            showAdoptedConfirmDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF4CAF50) // Green color
+                    )
+                ) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showAdoptedConfirmDialog = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Gray
+                    )
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+    
+    // Confirm delete listing dialog
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = { Text("Delete Listing") },
+            text = { 
+                Text("Are you sure you want to delete this adoption listing? This action cannot be undone.")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            pet?.id?.let { id ->
+                                adoptionPetRepository.removeAdoptionPet(id).collect { result ->
+                                    result.onSuccess {
+                                        Toast.makeText(
+                                            context,
+                                            "Listing deleted successfully",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        // Navigate back
+                                        onBackClick()
+                                    }.onFailure { error ->
+                                        Toast.makeText(
+                                            context,
+                                            "Failed to delete listing: ${error.message}",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                        showDeleteConfirmDialog = false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Red
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showDeleteConfirmDialog = false },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Gray
+                    )
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

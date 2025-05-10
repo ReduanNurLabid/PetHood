@@ -413,6 +413,11 @@ fun FoundPetReportScreen(
                                val currentUserId = userRepository.getCurrentUserId()
 
                                if(currentUserId != null){
+                                   // Get current user details
+                                   val currentUser = userRepository.getCurrentUser()
+                                   val reporterName = currentUser?.name ?: ""
+                                   val reporterEmail = currentUser?.email ?: ""
+                                   
                                    // Determine image source
                                    val finalImageSource = if (useImageUrl) imageUrl else selectedImageUri?.toString() ?: ""
                                
@@ -424,6 +429,8 @@ fun FoundPetReportScreen(
                                        description = petDetails,
                                        contactNumber = contactNumber,
                                        userId = currentUserId, // Add the reporter's ID
+                                       reporterName = reporterName, // Add reporter's name
+                                       reporterEmail = reporterEmail, // Add reporter's email
                                        isMissing = false, // This is a found pet report
                                        imageUrl = "cat_bunty", // Using placeholder image for now
                                        imageUri = finalImageSource // Store the URI string or URL

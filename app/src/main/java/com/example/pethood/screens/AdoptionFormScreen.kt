@@ -398,6 +398,10 @@ fun AdoptionFormScreen(
                     if (validateForm(name, petCategory, petType, location, contactNumber)) {
                         try {
                             val userId = PetHoodApplication.getInstance().userRepository.getCurrentUserId()
+                            val userRepository = PetHoodApplication.getInstance().userRepository
+                            val currentUser = userRepository.getCurrentUser()
+                            val ownerName = currentUser?.name ?: ""
+                            val ownerEmail = currentUser?.email ?: ""
                             val imageUriString = petImageUri?.toString() ?: ""
 
                             val tempId = "temp-" + UUID.randomUUID().toString()
@@ -419,6 +423,8 @@ fun AdoptionFormScreen(
                                 contactNumber = contactNumber,
                                 imageUri = finalImageSource,
                                 userId = userId,
+                                ownerName = ownerName,
+                                ownerEmail = ownerEmail,
                                 date = Date()
                             )
 

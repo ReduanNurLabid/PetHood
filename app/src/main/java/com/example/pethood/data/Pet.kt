@@ -3,7 +3,7 @@ package com.example.pethood.data
 
 enum class PetGender { MALE, FEMALE }
 
-enum class PetCategory { DOG, CAT, OTHER }
+enum class PetCategory { ALL, DOG, CAT, OTHER }
 
 
 data class Pet(
