@@ -93,7 +93,6 @@ fun HomeScreen(
                     .collect { result ->
                         result.fold(
                             onSuccess = { adoptionPets ->
-                                // Convert AdoptionPet to Pet
                                 allPets = adoptionPets.map { adoptionPet ->
                                     Pet(
                                         id = adoptionPet.id,
@@ -104,17 +103,16 @@ fun HomeScreen(
                                             "cat" -> PetCategory.CAT
                                             else -> PetCategory.OTHER
                                         },
-                                        gender = com.example.pethood.data.PetGender.MALE, // Default
-                                        age = 0, // Not available
+                                        gender = com.example.pethood.data.PetGender.MALE,
+                                        age = 0,
                                         description = adoptionPet.description,
-                                        imageUrl = adoptionPet.imageUri, // Use the URI string directly
+                                        imageUrl = adoptionPet.imageUri,
                                         contactNumber = adoptionPet.contactNumber,
                                         location = adoptionPet.location
                                     )
                                 }
                             },
                             onFailure = { exception ->
-                                // Handle failure
                                 Log.e("HomeScreen", "Failed to load pets: ${exception.message}")
                                 Toast.makeText(
                                     context,
@@ -164,14 +162,13 @@ fun HomeScreen(
         }
     }
 
-    // Filter pets by category and search query
     val filteredPets = remember(allPets, searchQuery, selectedCategory) {
         allPets.filter { pet ->
             val matchesCategory = when (selectedCategory) {
                 PetCategory.DOG -> pet.category == PetCategory.DOG
                 PetCategory.CAT -> pet.category == PetCategory.CAT
                 PetCategory.OTHER -> pet.category == PetCategory.OTHER
-                PetCategory.ALL -> true //
+                PetCategory.ALL -> true
             }
             val matchesSearchQuery = searchQuery.isEmpty() ||
                     pet.name.contains(searchQuery, ignoreCase = true) ||
@@ -204,7 +201,6 @@ fun HomeScreen(
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                // App title and Adoption button
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -344,7 +340,6 @@ fun DisplayPets(
                         modifier = Modifier.fillMaxSize()
                     )
                     
-                    // Add contact button over the card
                     Button(
                         onClick = { onContactClick(pet) },
                         modifier = Modifier
@@ -357,19 +352,18 @@ fun DisplayPets(
                             painter = painterResource(id = R.drawable.ic_phone),
                             contentDescription = stringResource(R.string.contact),
                             modifier = Modifier.size(16.dp),
-                            tint = Color.White // Ensure icon is visible
+                            tint = Color.White
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(R.string.contact_owner),
                             fontWeight = FontWeight.Bold,
-                            color = Color.White // Ensure text is visible
+                            color = Color.White
                         )
                     }
                 }
             }
             
-            // Add page indicators
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)

@@ -6,9 +6,6 @@ import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 
-/**
- * Repository for handling reported pets (missing and found)
- */
 class ReportedPetRepository() {
 
     private val firestore = Firebase.firestore
@@ -16,12 +13,10 @@ class ReportedPetRepository() {
     private val foundPetsCollection = firestore.collection("foundPets")
 
     init {
-        // Don't add sample data automatically
         Log.d("ReportedPetRepository", "Repository initialized without adding sample data")
     }
 
     suspend fun addMissingPet(pet: ReportedPet) {
-        // Always set isMissing=true for missing pets
         val petWithMissing = pet.copy(isMissing = true)
         val documentReference = missingPetsCollection.document()
         val petWithId = petWithMissing.copy(id = documentReference.id)
@@ -29,14 +24,12 @@ class ReportedPetRepository() {
     }
 
     suspend fun addFoundPet(pet: ReportedPet) {
-        // Always set isMissing=false for found pets
         val petWithFound = pet.copy(isMissing = false)
         val documentReference = foundPetsCollection.document()
         val petWithId = petWithFound.copy(id = documentReference.id)
         documentReference.set(petWithId).await()
     }
 
-    // For backward compatibility
     suspend fun addReportedPet(pet: ReportedPet) {
         if (pet.isMissing) {
             addMissingPet(pet)
@@ -45,25 +38,17 @@ class ReportedPetRepository() {
         }
     }
 
-    /**
-     * Get all reported pets (combines both collections)
-     */
+
     suspend fun getAllReportedPets(): List<ReportedPet> {
-        // Get missing pets
         val missingSnapshot = missingPetsCollection.get().await()
         val missingPets = missingSnapshot.toObjects(ReportedPet::class.java)
 
-        // Get found pets
         val foundSnapshot = foundPetsCollection.get().await()
         val foundPets = foundSnapshot.toObjects(ReportedPet::class.java)
 
-        // Combine the lists
         return missingPets + foundPets
     }
 
-    /**
-     * Get all missing pets
-     */
     suspend fun getAllMissingPets(): List<ReportedPet> {
         try {
             Log.d("ReportedPetRepository", "Fetching missing pets from Firestore...")
@@ -77,9 +62,7 @@ class ReportedPetRepository() {
         }
     }
 
-    /**
-     * Get all found pets
-     */
+
     suspend fun getAllFoundPets(): List<ReportedPet> {
         try {
             Log.d("ReportedPetRepository", "Fetching found pets from Firestore...")
@@ -112,7 +95,6 @@ class ReportedPetRepository() {
         foundPetsCollection.document(petId).delete().await()
     }
 
-    // For backward compatibility
     suspend fun deleteReportedPet(petId: String, isMissing: Boolean = true) {
         if (isMissing) {
             deleteMissingPet(petId)
@@ -135,13 +117,10 @@ class ReportedPetRepository() {
         }
     }
 
-    // Try to find a pet across both collections
     suspend fun getPetById(id: String): ReportedPet? {
-        // First try to find in the missing pets collection
         try {
             val missingPetDoc = missingPetsCollection.document(id).get().await()
             if (missingPetDoc.exists()) {
-                // Found in missing pets collection, make sure isMissing is true
                 val pet = missingPetDoc.toObject(ReportedPet::class.java)
                 return pet?.copy(isMissing = true)
             }
@@ -149,7 +128,6 @@ class ReportedPetRepository() {
             Log.e("ReportedPetRepository", "Error looking up missing pet: ${e.message}", e)
         }
         
-        // If not found, try the found pets collection
         try {
             val foundPetDoc = foundPetsCollection.document(id).get().await()
             if (foundPetDoc.exists()) {
@@ -164,7 +142,6 @@ class ReportedPetRepository() {
         return null
     }
 
-    // Alias method to maintain compatibility with existing code
     suspend fun getReportedPet(id: String): ReportedPet? {
         return getPetById(id)
     }
@@ -183,9 +160,6 @@ class ReportedPetRepository() {
         }
     }
 
-    /**
-     * Search for pets by query string
-     */
     suspend fun searchPets(query: String, isMissing: Boolean): List<ReportedPet> {
         val pets = if (isMissing) getAllMissingPets() else getAllFoundPets()
 
@@ -201,77 +175,6 @@ class ReportedPetRepository() {
         }
     }
 
-    /**
-     * Add sample data for testing/demo purposes
-     */
-    suspend fun addSampleData() {
-        val missingPets = listOf(
-            ReportedPet(
-                id = "1",
-                name = "Max",
-                type = "Golden Retriever",
-                lastSeen = "Central Park",
-                description = "Medium-sized golden retriever with a blue collar. Responds to 'Max'.",
-                imageUrl = "dog_zimmer",
-                imageUri = "",
-                contactNumber = "555-123-4567",
-                userId = "user1",
-                petId = "",
-                isMissing = true,
-                date = Date(System.currentTimeMillis() - 5 * 24 * 60 * 60 * 1000)
-            ),
-            ReportedPet(
-                id = "2",
-                name = "Luna",
-                type = "Siamese Cat",
-                lastSeen = "Main Street",
-                description = "Small siamese cat with blue eyes. Very shy.",
-                imageUrl = "cat_nero",
-                imageUri = "",
-                contactNumber = "555-987-6543",
-                userId = "user2",
-                petId = "",
-                isMissing = true,
-                date = Date(System.currentTimeMillis() - 2 * 24 * 60 * 60 * 1000)
-            )
-        )
-
-        val foundPets = listOf(
-            ReportedPet(
-                id = "3",
-                name = "Unknown Dog",
-                type = "Mixed Breed",
-                lastSeen = "Park Avenue",
-                description = "Medium-sized mixed breed dog. No collar but seems well-behaved.",
-                imageUrl = "dog_nemo",
-                imageUri = "",
-                contactNumber = "555-246-8135",
-                userId = "user3",
-                petId = "",
-                isMissing = false,
-                date = Date(System.currentTimeMillis() - 1 * 24 * 60 * 60 * 1000)
-            ),
-            ReportedPet(
-                id = "4",
-                name = "Unknown Cat",
-                type = "Tabby",
-                lastSeen = "Elm Street",
-                description = "Young tabby cat with white paws. Very friendly.",
-                imageUrl = "cat_bunty",
-                imageUri = "",
-                contactNumber = "555-369-1470",
-                userId = "user4",
-                petId = "",
-                isMissing = false,
-                date = Date(System.currentTimeMillis() - 3 * 24 * 60 * 60 * 1000)
-            )
-        )
-
-        missingPets.forEach { addMissingPet(it) }
-        foundPets.forEach { addFoundPet(it) }
-    }
-
-    // Returns a Flow of reported pets for real-time updates
     fun getReportedPets(): kotlinx.coroutines.flow.Flow<List<ReportedPet>> {
         return kotlinx.coroutines.flow.flow {
             emit(getAllReportedPets())

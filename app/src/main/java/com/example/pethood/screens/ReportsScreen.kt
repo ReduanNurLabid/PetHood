@@ -148,7 +148,6 @@ fun ReportsScreen(
                 .imePadding()
                 .padding(16.dp)
         ) {
-            // Header with back button and title
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -178,7 +177,6 @@ fun ReportsScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Help us save lives section
             Text(
                 text = "Help us save lives!",
                 fontSize = 24.sp,
@@ -201,7 +199,6 @@ fun ReportsScreen(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Replace with emergency reporting cards
                 item {
                     ReportCard(
                         title = "Report Abandoned Animal",
@@ -218,7 +215,6 @@ fun ReportsScreen(
                     )
                 }
 
-                // Placeholder for any other emergency reporting options
                 item {
                     ReportCard(
                         title = "Animal Emergency",
@@ -248,7 +244,6 @@ fun ReportsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Report found pet button
             Button(
                 onClick = onReportFoundPetClick,
                 modifier = Modifier
@@ -285,7 +280,6 @@ fun ReportCard(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Image
             Image(
                 painter = painterResource(id = imageRes),
                 contentDescription = title,
@@ -295,7 +289,6 @@ fun ReportCard(
                 contentScale = ContentScale.Crop
             )
 
-            // Title and button
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

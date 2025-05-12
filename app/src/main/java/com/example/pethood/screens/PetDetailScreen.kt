@@ -75,7 +75,6 @@ fun PetDetailScreen(
     })
 
     if(pet == null){
-        //Show a loading
         return
     }
 
@@ -93,9 +92,7 @@ fun PetDetailScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Pet image with back button
             Box(modifier = Modifier.fillMaxWidth()) {
-                // Pet image
                 if(pet != null) {
                     val resourceId = LocalContext.current.resources.getIdentifier(
                         pet!!.imageUrl, "drawable", LocalContext.current.packageName
@@ -115,7 +112,6 @@ fun PetDetailScreen(
                         contentScale = ContentScale.Crop
                     )
 
-                    // Back button
                     IconButton(
                         onClick = onBackClick,
                         modifier = Modifier
@@ -131,7 +127,6 @@ fun PetDetailScreen(
                         )
                     }
 
-                    // Image indicator dots
                     Row(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
@@ -154,12 +149,10 @@ fun PetDetailScreen(
                 }
             }
 
-            // Pet information
             if(pet != null) {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    // Pet name
                     Text(
                         text = pet!!.name,
                         fontSize = 24.sp,
@@ -169,19 +162,16 @@ fun PetDetailScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Pet details in cards
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
-                        // Age card
                         InfoCard(
                             title = "Age",
                             value = "${pet!!.age} ${if (pet!!.age == 1) "Year" else "Years"}",
                             modifier = Modifier.weight(1f)
                         )
 
-                        // Weight card (estimated based on breed)
                         val estimatedWeight = when (pet!!.breed.lowercase()) {
                             "pitbull" -> "20 Kg"
                             "golden" -> "30 Kg"
@@ -197,7 +187,6 @@ fun PetDetailScreen(
                             modifier = Modifier.weight(1f)
                         )
 
-                        // Gender card
                         InfoCard(
                             title = "Sex",
                             value = if (pet!!.gender == PetGender.MALE) "Male" else "Female",
@@ -207,7 +196,6 @@ fun PetDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // About section
                     Text(
                         text = "About",
                         fontSize = 18.sp,
@@ -226,7 +214,6 @@ fun PetDetailScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Request button
                     Button(
                         onClick = onRequestClick,
                         modifier = Modifier

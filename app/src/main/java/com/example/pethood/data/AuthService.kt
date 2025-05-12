@@ -15,7 +15,6 @@ class AuthService {
     private val db = Firebase.firestore
 
     init {
-        // Disable reCAPTCHA verification for testing (remove in production)
         val firebaseAuthSettings: FirebaseAuthSettings = auth.firebaseAuthSettings
         firebaseAuthSettings.setAppVerificationDisabledForTesting(true)
     }
@@ -49,7 +48,6 @@ class AuthService {
                     db.collection("users").document(uid)
                         .set(user)
                         .addOnSuccessListener {
-                            // Also update the display name in Firebase Auth
                             val profileUpdates = userProfileChangeRequest {
                                 displayName = name
                             }

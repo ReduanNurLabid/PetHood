@@ -66,31 +66,24 @@ fun FindLostScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedTabIndex by remember { mutableStateOf(0) } // 0 for Missing, 1 for Found
     
-    // Add a refresh trigger
     var refreshTrigger by remember { mutableStateOf(0) }
 
-    // Get data from repository
     val context = LocalContext.current
     val reportedPetRepository = remember { PetHoodApplication.getInstance().reportedPetRepository }
 
-    // Store pets in state
     var missingPets by remember { mutableStateOf<List<ReportedPet>>(emptyList()) }
     var foundPets by remember { mutableStateOf<List<ReportedPet>>(emptyList()) }
 
-    // Load data on launch and when refreshed
     LaunchedEffect(refreshTrigger) {
         try {
             Log.d("FindLostScreen", "Fetching missing and found pets...")
 
-            // Get missing pets
             val missingPetsList = reportedPetRepository.getAllMissingPets()
             Log.d("FindLostScreen", "Loaded ${missingPetsList.size} missing pets")
 
-            // Get found pets
             val foundPetsList = reportedPetRepository.getAllFoundPets()
             Log.d("FindLostScreen", "Loaded ${foundPetsList.size} found pets")
 
-            // Update state with separate lists
             missingPets = missingPetsList
             foundPets = foundPetsList
 
@@ -103,13 +96,10 @@ fun FindLostScreen(
         }
     }
 
-    // Refresh the screen when it becomes visible
     LaunchedEffect(Unit) {
-        // Trigger a refresh of the data
         refreshTrigger++
     }
 
-    // Filter based on search query
     val filteredMissingPets = missingPets.filter {
         searchQuery.isEmpty() ||
                 it.name.contains(searchQuery, ignoreCase = true) ||
@@ -124,7 +114,6 @@ fun FindLostScreen(
                 it.description.contains(searchQuery, ignoreCase = true)
     }
 
-    // Displayed pets based on tab selection
     val displayedPets = if (selectedTabIndex == 0) filteredMissingPets else filteredFoundPets
 
     Scaffold(
@@ -140,7 +129,6 @@ fun FindLostScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // App title
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -155,7 +143,6 @@ fun FindLostScreen(
 
                 Spacer(modifier = Modifier.weight(1f))
 
-                // Add log info for debugging in dev
                 Text(
                     text = "(${missingPets.size}/${foundPets.size})",
                     color = Color.Gray,
@@ -164,13 +151,11 @@ fun FindLostScreen(
                 )
             }
 
-            // Search bar
             SearchBar(
                 query = searchQuery,
                 onQueryChange = { searchQuery = it }
             )
 
-            // Tab selector for Missing/Found
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = Color.Transparent,
@@ -221,7 +206,6 @@ fun FindLostScreen(
                 )
             }
 
-            // Pet grid
             if (displayedPets.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -280,13 +264,11 @@ fun ReportedPetCard(
         colors = CardDefaults.cardColors(containerColor = Color.White),
     ) {
         Column {
-            // Pet image
             Box(
                 modifier = Modifier
                     .height(120.dp)
                     .fillMaxWidth()
             ) {
-                // Use uploaded image if available, otherwise use template
                 if (pet.imageUri != null && pet.imageUri.isNotEmpty()) {
                     val uri = try {
                         android.net.Uri.parse(pet.imageUri)
@@ -314,7 +296,6 @@ fun ReportedPetCard(
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        // No uploaded image, use drawable resource
                         val resourceId = if (pet.imageUrl != null && pet.imageUrl.isNotEmpty()) {
                             context.resources.getIdentifier(
                                 pet.imageUrl, "drawable", context.packageName
@@ -334,7 +315,6 @@ fun ReportedPetCard(
                         )
                     }
                 } else {
-                    // No uploaded image, use drawable resource
                     val resourceId = if (pet.imageUrl != null && pet.imageUrl.isNotEmpty()) {
                         context.resources.getIdentifier(
                             pet.imageUrl, "drawable", context.packageName
@@ -354,7 +334,6 @@ fun ReportedPetCard(
                     )
                 }
 
-                // Status badge
                 Box(
                     modifier = Modifier
                         .padding(8.dp)
@@ -374,7 +353,6 @@ fun ReportedPetCard(
                 }
             }
 
-            // Pet info
             Column(
                 modifier = Modifier.padding(12.dp)
             ) {

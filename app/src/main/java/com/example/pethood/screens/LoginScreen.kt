@@ -69,7 +69,6 @@ fun LoginScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primary)
     ) {
-        // Curved background shape for the content
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -88,7 +87,6 @@ fun LoginScreen(
         ) {
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Login Header
             Text(
                 text = stringResource(R.string.welcome_back),
                 fontSize = 28.sp,
@@ -106,7 +104,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Email field
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -125,7 +122,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password field
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -145,7 +141,6 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Forgot Password
             Text(
                 text = stringResource(R.string.forgot_password),
                 fontSize = 14.sp,

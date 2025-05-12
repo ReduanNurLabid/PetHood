@@ -78,14 +78,12 @@ fun MissingPetReportScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    // Image URL variables
     var useImageUrl by remember { mutableStateOf(false) }
     var imageUrl by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val reportedPetRepository: ReportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
     val userRepository = PetHoodApplication.getInstance().userRepository
-    // Get the selected image URI from the MainActivity
     val selectedImageUri = MainActivity.selectedImageUri.value
 
     Scaffold(
@@ -103,7 +101,6 @@ fun MissingPetReportScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Header with back button and title
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -133,7 +130,6 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Report a Missing Pet header
             Text(
                 text = "Report a Missing Pet",
                 fontSize = 24.sp,
@@ -143,7 +139,6 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Enter your details subheader
             Text(
                 text = "Enter your details",
                 fontSize = 16.sp,
@@ -152,7 +147,6 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Pet name field
             OutlinedTextField(
                 value = petName,
                 onValueChange = { petName = it },
@@ -168,7 +162,6 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Type of Pet field
             OutlinedTextField(
                 value = petType,
                 onValueChange = { petType = it },
@@ -184,7 +177,6 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Last Seen field
             OutlinedTextField(
                 value = lastSeen,
                 onValueChange = { lastSeen = it },
@@ -200,7 +192,6 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Pet description field
             OutlinedTextField(
                 value = petDescription,
                 onValueChange = { petDescription = it },
@@ -216,7 +207,6 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Contact number field
             OutlinedTextField(
                 value = contactNumber,
                 onValueChange = { contactNumber = it },
@@ -233,7 +223,6 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Image upload section - with clear label
             Text(
                 text = "Upload Pet Image",
                 fontSize = 16.sp,
@@ -243,7 +232,6 @@ fun MissingPetReportScreen(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Image source toggle
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -276,7 +264,6 @@ fun MissingPetReportScreen(
             Spacer(modifier = Modifier.height(12.dp))
             
             if (useImageUrl) {
-                // Image URL input
                 OutlinedTextField(
                     value = imageUrl,
                     onValueChange = { imageUrl = it },
@@ -324,7 +311,6 @@ fun MissingPetReportScreen(
                         )
                         .clip(RoundedCornerShape(24.dp))
                         .clickable {
-                            // Launch the image picker when the box is clicked
                             try {
                                 (context as? MainActivity)?.pickImage()
                             } catch (e: Exception) {
@@ -338,7 +324,6 @@ fun MissingPetReportScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     if (selectedImageUri != null) {
-                        // Display the selected image
                         Image(
                             painter = rememberAsyncImagePainter(model = selectedImageUri),
                             contentDescription = "Selected pet image",
@@ -346,7 +331,6 @@ fun MissingPetReportScreen(
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        // Display the upload icon
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
@@ -372,10 +356,8 @@ fun MissingPetReportScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Submit button
             Button(
                 onClick = {
-                    // Validate input
                     when {
                         petName.isBlank() -> {
                             errorMessage = "Please enter your pet's name"
@@ -409,32 +391,27 @@ fun MissingPetReportScreen(
                             isLoading = true
                             errorMessage = null
 
-                            // Get current user ID
                             val currentUserId = userRepository.getCurrentUserId()
-                            // Get current user details
                             val currentUser = userRepository.getCurrentUser()
                             val reporterName = currentUser?.name ?: ""
                             val reporterEmail = currentUser?.email ?: ""
 
-                            // Determine image source
                             val finalImageSource = if (useImageUrl) imageUrl else selectedImageUri?.toString() ?: ""
 
-                            // Create the reported pet
                             val reportedPet = ReportedPet(
                                 name = petName,
                                 type = petType,
                                 lastSeen = lastSeen,
                                 description = petDescription,
                                 contactNumber = contactNumber,
-                                userId = currentUserId, // Add the reporter's ID
-                                reporterName = reporterName, // Add reporter's name
-                                reporterEmail = reporterEmail, // Add reporter's email
-                                isMissing = true, // This is a missing pet report
-                                imageUrl = "dog_snoop", // Using placeholder image for now
-                                imageUri = finalImageSource // Store the URI string or URL
+                                userId = currentUserId,
+                                reporterName = reporterName,
+                                reporterEmail = reporterEmail,
+                                isMissing = true,
+                                imageUrl = "dog_snoop",
+                                imageUri = finalImageSource
                             )
-                            
-                            // Save the report
+
                             CoroutineScope(Dispatchers.IO).launch {
                                 reportedPetRepository.addReportedPet(reportedPet)
                             }
@@ -446,7 +423,6 @@ fun MissingPetReportScreen(
                             ).show()
                             onSubmitReport()
 
-                            // Reset the selected image
                             MainActivity.selectedImageUri.value = null
                             
                             isLoading = false
@@ -475,7 +451,6 @@ fun MissingPetReportScreen(
                 }
             }
 
-            // Error message
             errorMessage?.let {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

@@ -76,14 +76,12 @@ fun FoundPetReportScreen(
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     
-    // Image URL variables
     var useImageUrl by remember { mutableStateOf(false) }
     var imageUrl by remember { mutableStateOf("") }
 
     val context = LocalContext.current
     val reportedPetRepository = PetHoodApplication.getInstance().reportedPetRepository
     val userRepository = PetHoodApplication.getInstance().userRepository
-    // Get the selected image URI from the MainActivity
     val selectedImageUri = MainActivity.selectedImageUri.value
     val coroutineScope = rememberCoroutineScope()
 
@@ -102,7 +100,6 @@ fun FoundPetReportScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Header with back button and title
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -132,17 +129,15 @@ fun FoundPetReportScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Report a Found Pet header
             Text(
                 text = "Report a Found Pet",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF4CAF50) // Green color
+                color = Color(0xFF4CAF50)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Enter details subheader
             Text(
                 text = "Enter details about the pet you found",
                 fontSize = 16.sp,
@@ -151,7 +146,6 @@ fun FoundPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Pet name field
             OutlinedTextField(
                 value = petName,
                 onValueChange = { petName = it },
@@ -160,14 +154,13 @@ fun FoundPetReportScreen(
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF4CAF50) // Green color
+                    focusedBorderColor = Color(0xFF4CAF50)
                 ),
                 singleLine = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Type of Pet field
             OutlinedTextField(
                 value = petType,
                 onValueChange = { petType = it },
@@ -176,14 +169,13 @@ fun FoundPetReportScreen(
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF4CAF50) // Green color
+                    focusedBorderColor = Color(0xFF4CAF50)
                 ),
                 singleLine = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Last Seen field
             OutlinedTextField(
                 value = lastSeen,
                 onValueChange = { lastSeen = it },
@@ -192,14 +184,13 @@ fun FoundPetReportScreen(
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF4CAF50) // Green color
+                    focusedBorderColor = Color(0xFF4CAF50)
                 ),
                 singleLine = true
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Pet details field
             OutlinedTextField(
                 value = petDetails,
                 onValueChange = { petDetails = it },
@@ -208,14 +199,13 @@ fun FoundPetReportScreen(
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF4CAF50) // Green color
+                    focusedBorderColor = Color(0xFF4CAF50)
                 ),
                 minLines = 2
             )
 
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Contact number field
             OutlinedTextField(
                 value = contactNumber,
                 onValueChange = { contactNumber = it },
@@ -224,7 +214,7 @@ fun FoundPetReportScreen(
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     unfocusedBorderColor = Color.LightGray,
-                    focusedBorderColor = Color(0xFF4CAF50) // Green color
+                    focusedBorderColor = Color(0xFF4CAF50)
                 ),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
@@ -232,17 +222,15 @@ fun FoundPetReportScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Image upload section
             Text(
                 text = "Upload Pet Image",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF4CAF50) // Green color to match theme
+                color = Color(0xFF4CAF50)
             )
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            // Image source toggle
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
@@ -275,7 +263,6 @@ fun FoundPetReportScreen(
             Spacer(modifier = Modifier.height(12.dp))
             
             if (useImageUrl) {
-                // Image URL input
                 OutlinedTextField(
                     value = imageUrl,
                     onValueChange = { imageUrl = it },
@@ -284,7 +271,7 @@ fun FoundPetReportScreen(
                     shape = RoundedCornerShape(24.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color.LightGray,
-                        focusedBorderColor = Color(0xFF4CAF50) // Green color to match theme
+                        focusedBorderColor = Color(0xFF4CAF50)
                     ),
                     singleLine = true
                 )
@@ -323,7 +310,6 @@ fun FoundPetReportScreen(
                         )
                         .clip(RoundedCornerShape(24.dp))
                         .clickable { 
-                            // Launch the image picker when the box is clicked
                             try {
                                 (context as? MainActivity)?.pickImage()
                             } catch (e: Exception) {
@@ -337,7 +323,6 @@ fun FoundPetReportScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     if (selectedImageUri != null) {
-                        // Display the selected image
                         Image(
                             painter = rememberAsyncImagePainter(model = selectedImageUri),
                             contentDescription = "Selected pet image",
@@ -345,7 +330,6 @@ fun FoundPetReportScreen(
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        // Display the upload icon
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
@@ -371,10 +355,8 @@ fun FoundPetReportScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Submit button - green color
             Button(
                 onClick = {
-                    // Validate input
                     when {
                         petName.isBlank() -> {
                             errorMessage = "Please enter a name for the found pet"
@@ -409,34 +391,29 @@ fun FoundPetReportScreen(
                                isLoading = true
                                errorMessage = null
 
-                               // Get current user ID
                                val currentUserId = userRepository.getCurrentUserId()
 
                                if(currentUserId != null){
-                                   // Get current user details
                                    val currentUser = userRepository.getCurrentUser()
                                    val reporterName = currentUser?.name ?: ""
                                    val reporterEmail = currentUser?.email ?: ""
                                    
-                                   // Determine image source
                                    val finalImageSource = if (useImageUrl) imageUrl else selectedImageUri?.toString() ?: ""
                                
-                                   // Create the reported pet
                                    val reportedPet = ReportedPet(
                                        name = petName,
                                        type = petType,
                                        lastSeen = lastSeen,
                                        description = petDetails,
                                        contactNumber = contactNumber,
-                                       userId = currentUserId, // Add the reporter's ID
-                                       reporterName = reporterName, // Add reporter's name
-                                       reporterEmail = reporterEmail, // Add reporter's email
-                                       isMissing = false, // This is a found pet report
-                                       imageUrl = "cat_bunty", // Using placeholder image for now
-                                       imageUri = finalImageSource // Store the URI string or URL
+                                       userId = currentUserId,
+                                       reporterName = reporterName,
+                                       reporterEmail = reporterEmail,
+                                       isMissing = false,
+                                       imageUrl = "cat_bunty",
+                                       imageUri = finalImageSource
                                    )
 
-                                   // Save the report
                                    reportedPetRepository.addReportedPet(reportedPet)
 
                                    Toast.makeText(
@@ -446,7 +423,6 @@ fun FoundPetReportScreen(
                                    ).show()
                                    onSubmitReport()
 
-                                   // Reset the selected image
                                    MainActivity.selectedImageUri.value = null
                                }
 
@@ -460,7 +436,7 @@ fun FoundPetReportScreen(
                     .height(56.dp),
                 shape = RoundedCornerShape(28.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF4CAF50) // Green color
+                    containerColor = Color(0xFF4CAF50)
                 )
             ) {
                 if (isLoading) {
@@ -477,7 +453,6 @@ fun FoundPetReportScreen(
                 }
             }
 
-            // Error message
             errorMessage?.let {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

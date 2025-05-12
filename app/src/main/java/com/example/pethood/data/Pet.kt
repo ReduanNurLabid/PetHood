@@ -16,7 +16,6 @@ data class Pet(
     val description: String,
     val imageUrl: String,
     val isFavorite: Boolean = false,
-    // Additional fields for adoption pets
     val isAdoptionPet: Boolean = false,
     val adoptionPetId: String = "",
     val adoptionImageUri: String = "",

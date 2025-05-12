@@ -102,7 +102,6 @@ fun ReportedPetDetailScreen(
     val dateFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
     val formattedDate = dateFormat.format(localPet.date)
 
-    // Show contact dialog
     var showContactDialog by remember { mutableStateOf(false) }
 
     if (showContactDialog) {
@@ -120,7 +119,6 @@ fun ReportedPetDetailScreen(
                 Button(
                     onClick = {
                         showContactDialog = false
-                        // Open phone dialer with the actual contact number
                         if (localPet.contactNumber.isNotEmpty()) {
                             val intent = Intent(Intent.ACTION_DIAL).apply {
                                 data = Uri.parse("tel:${localPet.contactNumber}")
@@ -159,7 +157,6 @@ fun ReportedPetDetailScreen(
         )
     }
 
-    // Show confirmation dialog for marking pet as found/adopted
     var showConfirmationDialog by remember { mutableStateOf(false) }
 
     if (showConfirmationDialog) {
@@ -190,7 +187,6 @@ fun ReportedPetDetailScreen(
                         ).show()
 
                         showConfirmationDialog = false
-                        // Navigate back to the FindLost screen
                         onBackClick()
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = statusColor)
@@ -209,7 +205,6 @@ fun ReportedPetDetailScreen(
         )
     }
 
-    // Show delete confirmation dialog
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     if (showDeleteConfirmDialog) {
@@ -265,11 +260,8 @@ fun ReportedPetDetailScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
-            // Pet image with back button
             Box(modifier = Modifier.fillMaxWidth()) {
-                // Pet image
                 if (localPet.imageUri != null && localPet.imageUri.isNotEmpty()) {
-                    // Display uploaded image
                     val uri = try {
                         Uri.parse(localPet.imageUri)
                     } catch (e: Exception) {
@@ -299,7 +291,6 @@ fun ReportedPetDetailScreen(
                             contentScale = ContentScale.Crop
                         )
                     } else {
-                        // Fallback to template image if URI parsing failed
                         Image(
                             painter = painterResource(id = R.drawable.pet_logo),
                             contentDescription = localPet.name ?: "Pet",
@@ -310,7 +301,6 @@ fun ReportedPetDetailScreen(
                         )
                     }
                 } else {
-                    // Display template image
                     val resourceId =
                         if (localPet.imageUrl != null && localPet.imageUrl.isNotEmpty()) {
                         context.resources.getIdentifier(
@@ -330,7 +320,6 @@ fun ReportedPetDetailScreen(
                     )
                 }
 
-                // Back button
                 IconButton(
                     onClick = onBackClick,
                     modifier = Modifier
@@ -346,7 +335,6 @@ fun ReportedPetDetailScreen(
                     )
                 }
 
-                // Status badge
                 Box(
                     modifier = Modifier
                         .padding(16.dp)
@@ -366,13 +354,11 @@ fun ReportedPetDetailScreen(
                 }
             }
 
-            // Pet information
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
-                // Pet name and type
                 Text(
                     text = localPet.name ?: "Unknown Pet",
                     fontSize = 24.sp,
@@ -398,7 +384,6 @@ fun ReportedPetDetailScreen(
                         modifier = Modifier.weight(1f)
                     )
 
-                    // Location card
                     ReportInfoCard(
                         title = if (localPet.isMissing) "Last Seen" else "Found At",
                         value = localPet.lastSeen,
@@ -408,7 +393,6 @@ fun ReportedPetDetailScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // About section
                 Text(
                     text = "Details",
                     fontSize = 18.sp,
@@ -427,7 +411,6 @@ fun ReportedPetDetailScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
                 
-                // Reporter information section
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -515,10 +498,8 @@ fun ReportedPetDetailScreen(
                 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Show different buttons based on whether current user is the reporter
                 if (isUserReporter) {
                     Column {
-                        // Mark as found/adopted button
                         OutlinedButton(
                             onClick = { showConfirmationDialog = true },
                             modifier = Modifier
@@ -537,7 +518,6 @@ fun ReportedPetDetailScreen(
                             )
                         }
 
-                        // Delete report button
                         Spacer(modifier = Modifier.height(16.dp))
                         OutlinedButton(
                             onClick = { showDeleteConfirmDialog = true },
@@ -567,7 +547,7 @@ fun ReportedPetDetailScreen(
                                     .height(50.dp),
                                 shape = RoundedCornerShape(8.dp),
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF9C27B0) // Purple color for adoption
+                                    containerColor = Color(0xFF9C27B0)
                                 )
                             ) {
                                 Text(
@@ -580,7 +560,6 @@ fun ReportedPetDetailScreen(
                         }
                     }
                 } else {
-                    // Other users can directly call the reporter
                     Button(
                         onClick = {
                             if (localPet.contactNumber.isNotEmpty()) {

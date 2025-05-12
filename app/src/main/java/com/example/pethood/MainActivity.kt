@@ -24,16 +24,13 @@ import java.io.IOException
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
-    // Create a mutable state to hold the selected image URI
     companion object {
         val selectedImageUri = mutableStateOf<Uri?>(null)
 
-        // Function to save an image URI to app storage and return the saved file URI
         fun saveImageToInternalStorage(context: Context, sourceUri: Uri): Uri? {
             try {
                 val contentResolver: ContentResolver = context.contentResolver
 
-                // Create a unique filename with UUID
                 val imageFileName = "pethood_image_${UUID.randomUUID()}.jpg"
                 val imagesDir = File(context.filesDir, "pet_images")
                 if (!imagesDir.exists()) {
@@ -41,10 +38,9 @@ class MainActivity : ComponentActivity() {
                 }
                 val imageFile = File(imagesDir, imageFileName)
 
-                // Copy the content from the source URI to our file
                 contentResolver.openInputStream(sourceUri)?.use { input ->
                     FileOutputStream(imageFile).use { output ->
-                        val buffer = ByteArray(4 * 1024) // 4kb buffer
+                        val buffer = ByteArray(4 * 1024)
                         var read: Int
                         while (input.read(buffer).also { read = it } != -1) {
                             output.write(buffer, 0, read)
@@ -53,7 +49,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                // Return the URI for the saved file
                 return Uri.fromFile(imageFile)
             } catch (e: IOException) {
                 e.printStackTrace()
@@ -63,23 +58,17 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    // Track if there was a crash or error
     private var hadError = false
     
-    // Track current navigation screen to restore after recreation
     private var currentScreen: String? = null
     
-    // Register the activity result launcher to handle image selection
     private val imagePickerLauncher = registerForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         try {
-            // If a URI was returned from the picker
             if (uri != null) {
-                // Save the image to internal storage
                 val savedUri = saveImageToInternalStorage(this, uri)
 
-                // Update the selected image URI with our saved file URI
                 selectedImageUri.value = savedUri
                 android.util.Log.d("MainActivity", "Saved image URI: $savedUri")
             }
@@ -89,7 +78,6 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    // Function to launch the image picker
     fun pickImage() {
         try {
             imagePickerLauncher.launch("image/*")
@@ -102,7 +90,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Restore state if available
         savedInstanceState?.let {
             currentScreen = it.getString("current_screen")
             hadError = it.getBoolean("had_error", false)
@@ -118,12 +105,9 @@ class MainActivity : ComponentActivity() {
                     ) {
                         val navController = rememberNavController()
                         
-                        // Use saved state to determine start destination
                         val startDestination = if (hadError) {
-                            // If there was an error, go to home screen to recover
                             Screen.Home.route
                         } else {
-                            // Otherwise use the saved screen if available
                             currentScreen
                         }
                         
@@ -135,11 +119,9 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } catch (e: Exception) {
-            // Handle any errors during setup
             android.util.Log.e("MainActivity", "Error setting up the app: ${e.message}", e)
             hadError = true
             
-            // Try to recover with a simpler UI
             setContent {
                 PetHoodTheme {
                     Surface(
@@ -157,7 +139,6 @@ class MainActivity : ComponentActivity() {
     
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
-        // Save current screen for restoration
         currentScreen?.let {
             outState.putString("current_screen", it)
         }

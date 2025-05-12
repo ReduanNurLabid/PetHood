@@ -72,15 +72,12 @@ fun ProfileScreen(
     val userRepository = PetHoodApplication.getInstance().userRepository
     var currentUser by remember { mutableStateOf(userRepository.getCurrentUser()) }
     
-    // State variables to track loading and errors
     var isLoading by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
 
-    // Refresh user data when the screen is displayed
     androidx.compose.runtime.LaunchedEffect(Unit) {
         isLoading = true
         try {
-            // Force a refresh of user data from Firestore
             val refreshedUser = userRepository.refreshCurrentUser()
             currentUser = refreshedUser ?: userRepository.getCurrentUser()
             loadError = null
@@ -92,7 +89,6 @@ fun ProfileScreen(
         }
     }
     
-    // State variables for the dialogs
     var showImageUrlDialog by remember { mutableStateOf(false) }
     var showPasswordDialog by remember { mutableStateOf(false) }
     var showPhoneDialog by remember { mutableStateOf(false) }
@@ -105,17 +101,14 @@ fun ProfileScreen(
     var confirmPassword by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Focus requesters for the text fields
     val imageUrlFocusRequester = remember { FocusRequester() }
     val phoneNumberFocusRequester = remember { FocusRequester() }
     val nameFocusRequester = remember { FocusRequester() }
     val currentPasswordFocusRequester = remember { FocusRequester() }
 
-    // Update dialog values when opened
     androidx.compose.runtime.LaunchedEffect(showImageUrlDialog, showPhoneDialog, showNameDialog) {
         if (showImageUrlDialog) {
             imageUrl = currentUser?.profileImageUrl ?: ""
-            // Request focus after a short delay to ensure dialog is fully shown
             kotlinx.coroutines.delay(100)
             try {
                 imageUrlFocusRequester.requestFocus()
@@ -125,7 +118,6 @@ fun ProfileScreen(
         }
         if (showPhoneDialog) {
             phoneNumber = currentUser?.phoneNumber ?: ""
-            // Request focus after a short delay
             kotlinx.coroutines.delay(100)
             try {
                 phoneNumberFocusRequester.requestFocus()
@@ -135,7 +127,6 @@ fun ProfileScreen(
         }
         if (showNameDialog) {
             userName = currentUser?.name ?: ""
-            // Request focus after a short delay
             kotlinx.coroutines.delay(100)
             try {
                 nameFocusRequester.requestFocus()
@@ -172,7 +163,6 @@ fun ProfileScreen(
                 modifier = Modifier.padding(vertical = 16.dp)
             )
 
-            // Show loading indicator or error message if applicable
             when {
                 isLoading -> {
                     Box(
@@ -196,7 +186,6 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // User avatar with edit button
             Box(
                 modifier = Modifier
                     .size(120.dp)
@@ -205,7 +194,6 @@ fun ProfileScreen(
                 contentAlignment = Alignment.Center
             ) {
                 if (currentUser?.profileImageUrl?.isNotEmpty() == true) {
-                    // Load profile image from URL
                     Image(
                         painter = rememberAsyncImagePainter(model = currentUser?.profileImageUrl),
                         contentDescription = "Profile Image",
@@ -213,7 +201,6 @@ fun ProfileScreen(
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    // Default icon if no image URL
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = "Profile",
@@ -224,7 +211,6 @@ fun ProfileScreen(
                     )
                 }
                 
-                // Edit button overlay
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
@@ -248,7 +234,6 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // User info card
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -345,7 +330,6 @@ fun ProfileScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Account actions section
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -366,7 +350,6 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Update Profile Name Button
                     Button(
                         onClick = { showNameDialog = true },
                         modifier = Modifier
@@ -387,7 +370,6 @@ fun ProfileScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Update Profile Image Button
                     Button(
                         onClick = { showImageUrlDialog = true },
                         modifier = Modifier
@@ -408,7 +390,6 @@ fun ProfileScreen(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    // Change Password Button
                     Button(
                         onClick = { showPasswordDialog = true },
                         modifier = Modifier
@@ -429,7 +410,6 @@ fun ProfileScreen(
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
-                    // Update Phone Number Button
                     Button(
                         onClick = { showPhoneDialog = true },
                         modifier = Modifier
@@ -452,7 +432,6 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Logout button
             Button(
                 onClick = {
                     userRepository.logout()
@@ -479,7 +458,6 @@ fun ProfileScreen(
         }
     }
     
-    // Profile Image URL Dialog
     if (showImageUrlDialog) {
         AlertDialog(
             onDismissRequest = { showImageUrlDialog = false },
@@ -545,7 +523,6 @@ fun ProfileScreen(
         )
     }
     
-    // Change Password Dialog
     if (showPasswordDialog) {
         AlertDialog(
             onDismissRequest = { showPasswordDialog = false },
@@ -603,7 +580,6 @@ fun ProfileScreen(
                         singleLine = true
                     )
                     
-                    // Error message if any
                     if (errorMessage != null) {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
@@ -646,7 +622,6 @@ fun ProfileScreen(
                                             Toast.LENGTH_SHORT
                                         ).show()
                                         showPasswordDialog = false
-                                        // Reset fields and error message
                                         currentPassword = ""
                                         newPassword = ""
                                         confirmPassword = ""
@@ -666,7 +641,6 @@ fun ProfileScreen(
             dismissButton = {
                 TextButton(onClick = {
                     showPasswordDialog = false
-                    // Reset fields and error message
                     currentPassword = ""
                     newPassword = ""
                     confirmPassword = ""
@@ -678,7 +652,6 @@ fun ProfileScreen(
         )
     }
     
-    // Update Phone Number Dialog
     if (showPhoneDialog) {
         AlertDialog(
             onDismissRequest = { showPhoneDialog = false },
@@ -746,7 +719,6 @@ fun ProfileScreen(
         )
     }
 
-    // Update Name Dialog
     if (showNameDialog) {
         AlertDialog(
             onDismissRequest = { showNameDialog = false },

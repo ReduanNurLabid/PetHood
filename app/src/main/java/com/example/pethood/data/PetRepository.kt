@@ -43,7 +43,6 @@ class PetRepository {
         try {
             petsCollection.document(pet.id).set(pet).await()
         } catch (e: Exception) {
-            // Handle error
         }
     }
 

@@ -71,7 +71,6 @@ fun SignupScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primary)
     ) {
-        // Curved background shape for the content
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -90,7 +89,6 @@ fun SignupScreen(
         ) {
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Signup Header
             Text(
                 text = stringResource(R.string.create_account),
                 fontSize = 28.sp,
@@ -108,7 +106,6 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Name field
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -127,7 +124,6 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Email field
             OutlinedTextField(
                 value = email,
                 onValueChange = { email = it },
@@ -146,7 +142,6 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Phone number field
             OutlinedTextField(
                 value = phoneNumber,
                 onValueChange = { phoneNumber = it },
@@ -165,7 +160,6 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Password field
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
@@ -185,10 +179,8 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Signup Button
             Button(
                 onClick = {
-                    // Validate input fields
                     when {
                         name.isBlank() -> {
                             errorMessage = "Please enter your name"
@@ -226,11 +218,10 @@ fun SignupScreen(
                                 authService.signup(email,password,name,phoneNumber)
                                     .addOnCompleteListener { task ->
                                         if (task.isSuccessful) {
-                                            // Create a User object and save it to the repository
                                             val user = User(
                                                 id = userRepository.getCurrentUserId(),
                                                 email = email,
-                                                password = password, // Note: Storing password locally is not recommended in production
+                                                password = password,
                                                 name = name,
                                                 phoneNumber = phoneNumber
                                             )
@@ -255,7 +246,6 @@ fun SignupScreen(
                     .fillMaxWidth().height(50.dp), shape = RoundedCornerShape(8.dp), colors = ButtonDefaults.buttonColors( containerColor = MaterialTheme.colorScheme.tertiary )
             ) {
                 if (isLoading) {
-                    // Show loading indicator
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onTertiary
@@ -271,7 +261,6 @@ fun SignupScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Login link
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center
@@ -291,7 +280,6 @@ fun SignupScreen(
                 )
             }
 
-            // Display error message if there is one
             errorMessage?.let {
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -306,15 +294,12 @@ fun SignupScreen(
     }
 }
 
-// Helper function to validate email format
 private fun isValidEmail(email: String): Boolean {
     val emailPattern = "[a-zA-Z0-9._-]+@[a-z]+\\.+[a-z]+"
     return email.matches(emailPattern.toRegex())
 }
 
-// Add validation function for phone number
 private fun isValidPhoneNumber(phoneNumber: String): Boolean {
-    // Simple validation: must be at least 10 digits and contain only digits, spaces, + and -
     val digitsOnly = phoneNumber.filter { it.isDigit() }
     return digitsOnly.length >= 10 && phoneNumber.all { it.isDigit() || it == ' ' || it == '+' || it == '-' }
 }

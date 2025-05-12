@@ -89,7 +89,6 @@ fun AdoptionFormScreen(
 
     val adoptionColor = Color(0xFF9C27B0)
     
-    // Form state
     var name by remember { mutableStateOf("") }
     var petType by remember { mutableStateOf("") }
     var petCategory by remember { mutableStateOf("") }
@@ -108,13 +107,11 @@ fun AdoptionFormScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            // Save the image to internal storage for persistence
             val savedUri = MainActivity.saveImageToInternalStorage(context, uri)
             petImageUri = savedUri
         }
     }
 
-    // Pre-load string resources
     val successMessage = stringResource(R.string.pet_successfully_put_up_for_adoption)
     val errorMessage = stringResource(R.string.error_creating_adoption)
     val requiredFieldsMessage = stringResource(R.string.please_fill_all_required_fields)
@@ -135,7 +132,6 @@ fun AdoptionFormScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
-            // Header with back button
             Box(modifier = Modifier.fillMaxWidth()) {
                 IconButton(
                     onClick = onBackClick,
@@ -161,7 +157,6 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
             
-            // Image source toggle
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.image_source),
@@ -202,9 +197,7 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Image selection section based on toggle
             if (useImageUrl) {
-                // Image URL input
                 OutlinedTextField(
                     value = imageUrl,
                     onValueChange = { imageUrl = it },
@@ -242,7 +235,6 @@ fun AdoptionFormScreen(
                     }
                 }
             } else {
-                // Pet Image Upload
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -289,7 +281,6 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Pet Name
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -300,7 +291,6 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Pet Category Dropdown
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -346,7 +336,6 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Pet Type/Breed
             OutlinedTextField(
                 value = petType,
                 onValueChange = { petType = it },
@@ -368,7 +357,6 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Contact Number
             OutlinedTextField(
                 value = contactNumber,
                 onValueChange = { contactNumber = it },
@@ -379,7 +367,6 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
             
-            // Description
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
@@ -392,7 +379,6 @@ fun AdoptionFormScreen(
             
             Spacer(modifier = Modifier.height(24.dp))
             
-            // Submit Button
             Button(
                 onClick = {
                     if (validateForm(name, petCategory, petType, location, contactNumber)) {
@@ -406,7 +392,6 @@ fun AdoptionFormScreen(
 
                             val tempId = "temp-" + UUID.randomUUID().toString()
 
-                            // Determine which image source to use
                             val finalImageSource = if (useImageUrl && imageUrl.isNotBlank()) {
                                 imageUrl
                             } else {

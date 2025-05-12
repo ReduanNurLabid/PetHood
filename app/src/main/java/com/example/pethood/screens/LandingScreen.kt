@@ -44,7 +44,6 @@ fun LandingScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primary)
     ) {
-        // Curved background shape for the content
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -64,7 +63,6 @@ fun LandingScreen(
         ) {
             Spacer(modifier = Modifier.height(40.dp))
 
-            // Logo and App name
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -93,7 +91,6 @@ fun LandingScreen(
                 )
             }
 
-            // Buttons
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),

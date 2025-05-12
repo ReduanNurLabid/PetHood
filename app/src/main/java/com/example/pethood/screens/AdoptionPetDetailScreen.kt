@@ -488,7 +488,6 @@ fun AdoptionPetDetailScreen(
         }
     }
     
-    // Confirm marking as adopted dialog
     if (showAdoptedConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showAdoptedConfirmDialog = false },
@@ -546,7 +545,6 @@ fun AdoptionPetDetailScreen(
         )
     }
     
-    // Confirm delete listing dialog
     if (showDeleteConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmDialog = false },

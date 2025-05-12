@@ -130,9 +130,7 @@ fun AppNavigation(
         composable(Screen.Home.route) {
             val refreshTrigger = remember { mutableStateOf(0) }
 
-            // When returning to Home from other screens, trigger a data refresh
             DisposableEffect(Unit) {
-                // Increment refresh trigger when returning to Home screen
                 refreshTrigger.value++
                 onDispose { }
             }
@@ -216,7 +214,6 @@ fun AppNavigation(
                     navController.popBackStack()
                 },
                 onRequestClick = {
-                    // Handle request logic here
                 },
                 navigateToRoute = { destination ->
                     navController.navigate(destination.route) {
@@ -313,67 +310,3 @@ fun AppNavigation(
     }
 }
 
-private fun getSamplePets(): List<Pet> {
-    return listOf(
-        Pet(
-            id = "1",
-            name = "Snoop",
-            breed = "Pitbull",
-            category = PetCategory.DOG,
-            gender = PetGender.FEMALE,
-            age = 2,
-            description = "Friendly and playful pitbull looking for a forever home. Snoop enjoys long walks and playing fetch. She's great with kids and other pets.",
-            imageUrl = "dog_snoop"
-        ),
-        Pet(
-            id = "2",
-            name = "Zimmer",
-            breed = "Golden",
-            category = PetCategory.DOG,
-            gender = PetGender.MALE,
-            age = 3,
-            description = "Loving golden retriever that enjoys playing fetch. Zimmer is well-trained and loves to be around people. He's gentle and patient, making him perfect for families.",
-            imageUrl = "dog_zimmer"
-        ),
-        Pet(
-            id = "3",
-            name = "Nemo",
-            breed = "Criollo",
-            category = PetCategory.DOG,
-            gender = PetGender.MALE,
-            age = 1,
-            description = "Nemo is an intelligent and very active puppy who loves playing with a ball and going on long walks. He's also very affectionate and gentle.\nHe's eagerly awaiting a family who will welcome him and be willing to receive lots of love.",
-            imageUrl = "dog_nemo"
-        ),
-        Pet(
-            id = "4",
-            name = "Bunty",
-            breed = "Mixed",
-            category = PetCategory.CAT,
-            gender = PetGender.FEMALE,
-            age = 2,
-            description = "Gentle cat who loves to curl up in your lap. Bunty is a sweet, calm cat who enjoys peaceful environments. She's litter trained and gets along well with respectful children.",
-            imageUrl = "cat_bunty"
-        ),
-        Pet(
-            id = "5",
-            name = "Nero",
-            breed = "Persian",
-            category = PetCategory.CAT,
-            gender = PetGender.MALE,
-            age = 4,
-            description = "Majestic Persian cat looking for a quiet home. Nero is graceful and dignified, enjoying a calm household. His beautiful coat requires regular grooming, but he enjoys the attention.",
-            imageUrl = "cat_nero"
-        ),
-        Pet(
-            id = "6",
-            name = "Noball",
-            breed = "Deshi",
-            category = PetCategory.CAT,
-            gender = PetGender.FEMALE,
-            age = 1,
-            description = "Curious and adventurous kitten. Noball is playful and energetic, always exploring her surroundings. She's quick to learn and will bring lots of joy to any household.",
-            imageUrl = "cat_noball"
-        )
-    )
-}
